@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#6b8f71">
+<meta name="description" content="Cabinet Aude RAFSTEDT – Gestion patients, rendez-vous et facturation">
+<title>Cabinet Aude RAFSTEDT</title>
+<link rel="manifest" href="#" id="manifest-link">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --sage:       #6b8f71;
+    --sage-light: #a8c4a2;
+    --sage-pale:  #e8f0e9;
+    --sage-dark:  #4a6b50;
+    --terra:      #c9956a;
+    --terra-pale: #f5e8de;
+    --beige:      #f7f3ee;
+    --beige-mid:  #ede5d8;
+    --warm-dark:  #3d3530;
+    --warm-mid:   #7a6e67;
+    --warm-light: #b8afa8;
+    --white:      #ffffff;
+    --danger:     #c0392b;
+    --danger-pale:#fdf0ee;
+    --radius:     12px;
+    --radius-sm:  8px;
+    --shadow:     0 2px 16px rgba(61,53,48,0.08);
+    --shadow-lg:  0 8px 32px rgba(61,53,48,0.14);
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+    --font-sans:  'DM Sans', system-ui, sans-serif;
+    --transition: 200ms ease;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--beige);
+    color: var(--warm-dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--white);
+    border-bottom: 1px solid var(--beige-mid);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 8px rgba(61,53,48,0.06);
+  }
+
+  .logo-mark {
+    width: 40px;
+    height: 40px;
+    background: var(--sage);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 400;
+    flex-shrink: 0;
+  }
+
+  .logo-text {
+    flex: 1;
+  }
+
+  .logo-text .name {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--warm-dark);
+    line-height: 1.2;
+  }
+
+  .logo-text .subtitle {
+    font-size: 11px;
+    color: var(--warm-mid);
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* ── Nav ── */
+  nav {
+    background: var(--white);
+    border-bottom: 1px solid var(--beige-mid);
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  nav::-webkit-scrollbar { display: none; }
+
+  .nav-btn {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--warm-mid);
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.02em;
+  }
+  .nav-btn:hover { color: var(--sage-dark); background: var(--sage-pale); }
+  .nav-btn.active { color: var(--sage-dark); border-bottom-color: var(--sage); font-weight: 500; }
+
+  .nav-icon { font-size: 16px; }
+
+  /* ── Main ── */
+  main {
+    flex: 1;
+    padding: 1.5rem;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Page header ── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .page-title {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--warm-dark);
+    letter-spacing: 0.01em;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    transition: var(--transition);
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: var(--sage);
+    color: white;
+    border-color: var(--sage);
+  }
+  .btn-primary:hover { background: var(--sage-dark); border-color: var(--sage-dark); }
+
+  .btn-secondary {
+    background: var(--white);
+    color: var(--warm-dark);
+    border-color: var(--beige-mid);
+  }
+  .btn-secondary:hover { border-color: var(--sage-light); color: var(--sage-dark); }
+
+  .btn-danger {
+    background: var(--danger-pale);
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-danger:hover { background: var(--danger); color: white; }
+
+  .btn-sm { padding: 0.3rem 0.7rem; font-size: 12px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--beige-mid);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+
+  /* ── Stats ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--beige-mid);
+    padding: 1rem 1.25rem;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--warm-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+  }
+
+  .stat-value {
+    font-family: var(--font-serif);
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--sage-dark);
+    line-height: 1;
+  }
+
+  /* ── Patient cards ── */
+  .patient-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--beige-mid);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: var(--transition);
+    cursor: pointer;
+  }
+  .patient-card:hover { border-color: var(--sage-light); box-shadow: var(--shadow); }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--sage-pale);
+    color: var(--sage-dark);
+    font-family: var(--font-serif);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 500;
+    border: 1.5px solid var(--sage-light);
+  }
+
+  .patient-info { flex: 1; min-width: 0; }
+  .patient-name { font-size: 15px; font-weight: 500; color: var(--warm-dark); }
+  .patient-meta { font-size: 12px; color: var(--warm-mid); margin-top: 2px; }
+
+  /* ── Séances ── */
+  .rdv-item {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--beige-mid);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .rdv-date {
+    text-align: center;
+    min-width: 52px;
+    background: var(--sage-pale);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem;
+    border: 1px solid var(--sage-light);
+  }
+  .rdv-date .day { font-size: 22px; font-family: var(--font-serif); color: var(--sage-dark); line-height: 1; }
+  .rdv-date .month { font-size: 10px; text-transform: uppercase; color: var(--sage); font-weight: 500; letter-spacing: 0.08em; }
+
+  .rdv-info { flex: 1; }
+  .rdv-patient { font-size: 14px; font-weight: 500; }
+  .rdv-time { font-size: 12px; color: var(--warm-mid); margin-top: 2px; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+  .badge-honoré { background: #e8f5e9; color: #388e3c; }
+  .badge-annulé { background: var(--danger-pale); color: var(--danger); }
+  .badge-planifié { background: #e3f2fd; color: #1565c0; }
+  .badge-impayé { background: #fff8e1; color: #f57f17; }
+
+  /* ── Formulaires ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(61,53,48,0.45);
+    z-index: 200;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+    overflow-y: auto;
+  }
+  .modal-overlay.hidden { display: none; }
+
+  .modal {
+    background: var(--white);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 520px;
+    padding: 1.75rem;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    margin: auto;
+  }
+
+  .modal-title {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 400;
+    margin-bottom: 1.25rem;
+    color: var(--warm-dark);
+  }
+
+  .form-group { margin-bottom: 1rem; }
+  .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--warm-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border: 1.5px solid var(--beige-mid);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--warm-dark);
+    background: var(--white);
+    outline: none;
+    transition: var(--transition);
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--sage);
+    box-shadow: 0 0 0 3px rgba(107,143,113,0.12);
+  }
+
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--beige-mid);
+    padding-top: 1.25rem;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--warm-mid);
+    font-size: 20px;
+    line-height: 1;
+    padding: 0.2rem;
+  }
+  .modal-close:hover { color: var(--warm-dark); }
+
+  /* ── Search ── */
+  .search-bar {
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 0.65rem 0.9rem 0.65rem 2.4rem;
+    border: 1.5px solid var(--beige-mid);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--warm-dark);
+    background: var(--white);
+    outline: none;
+    transition: var(--transition);
+  }
+  .search-bar input:focus { border-color: var(--sage); }
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--warm-light);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  /* ── Factures ── */
+  .invoice-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--beige-mid);
+    transition: var(--transition);
+  }
+  .invoice-row:last-child { border-bottom: none; }
+  .invoice-row:hover { background: var(--sage-pale); }
+
+  .inv-num { font-size: 13px; font-weight: 500; color: var(--sage-dark); min-width: 80px; }
+  .inv-info { flex: 1; }
+  .inv-patient { font-size: 14px; font-weight: 400; }
+  .inv-date { font-size: 12px; color: var(--warm-mid); }
+  .inv-amount { font-family: var(--font-serif); font-size: 18px; color: var(--warm-dark); text-align: right; min-width: 80px; }
+
+  /* ── Aperçu facture ── */
+  .invoice-preview {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--beige-mid);
+    padding: 2rem;
+    font-family: var(--font-sans);
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+  .inv-logo-name { font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--sage-dark); }
+  .inv-logo-sub { font-size: 11px; color: var(--warm-mid); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  .inv-num-block { text-align: right; }
+  .inv-num-label { font-size: 11px; color: var(--warm-mid); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+  .inv-num-value { font-size: 18px; font-family: var(--font-serif); color: var(--warm-dark); }
+
+  .inv-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.75rem; padding: 1.25rem; background: var(--beige); border-radius: var(--radius-sm); }
+  .inv-party-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--warm-mid); margin-bottom: 0.4rem; }
+  .inv-party-name { font-size: 14px; font-weight: 500; margin-bottom: 0.2rem; }
+  .inv-party-detail { font-size: 12px; color: var(--warm-mid); line-height: 1.5; }
+
+  .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 13px; }
+  .inv-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--warm-mid); font-weight: 500; border-bottom: 1.5px solid var(--beige-mid); padding: 0.5rem 0.75rem; text-align: left; }
+  .inv-table td { padding: 0.75rem; border-bottom: 1px solid var(--beige-mid); vertical-align: top; }
+  .inv-table tr:last-child td { border-bottom: none; }
+
+  .inv-total-row { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+  .inv-total-label { font-size: 12px; color: var(--warm-mid); min-width: 120px; text-align: right; margin-right: 1rem; }
+  .inv-total-value { font-size: 15px; font-weight: 500; min-width: 80px; text-align: right; }
+  .inv-grand-total { font-family: var(--font-serif); font-size: 22px; color: var(--sage-dark); }
+
+  .inv-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--beige-mid); font-size: 11px; color: var(--warm-mid); line-height: 1.6; }
+
+  /* ── Dashboard calendar ── */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-top: 0.75rem;
+  }
+  .cal-day-name { text-align: center; font-size: 10px; font-weight: 500; color: var(--warm-mid); text-transform: uppercase; letter-spacing: 0.06em; padding: 0.2rem 0; }
+  .cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--warm-mid);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+  }
+  .cal-day:hover { background: var(--sage-pale); color: var(--sage-dark); }
+  .cal-day.today { background: var(--sage); color: white; font-weight: 500; }
+  .cal-day.has-rdv::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--terra);
+  }
+  .cal-day.today.has-rdv::after { background: rgba(255,255,255,0.8); }
+  .cal-day.empty { opacity: 0; pointer-events: none; }
+  .cal-day.other-month { opacity: 0.35; }
+
+  /* ── Tabs dans modal ── */
+  .tab-group { display: flex; gap: 2px; margin-bottom: 1.25rem; background: var(--beige); padding: 3px; border-radius: var(--radius-sm); }
+  .tab-btn { flex: 1; padding: 0.4rem; border: none; background: none; cursor: pointer; font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--warm-mid); border-radius: 6px; transition: var(--transition); }
+  .tab-btn.active { background: var(--white); color: var(--warm-dark); box-shadow: 0 1px 4px rgba(61,53,48,0.08); }
+
+  /* ── Notifications ── */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--warm-dark);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    z-index: 999;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .toast.hidden { display: none; }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--warm-mid);
+  }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 1rem; opacity: 0.5; }
+  .empty-state p { font-size: 14px; margin-bottom: 1.25rem; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--warm-mid);
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.02em;
+    text-transform: italic;
+  }
+
+  /* ── Notes patient ── */
+  .notes-block {
+    background: var(--beige);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--beige-mid);
+    padding: 0.85rem 1rem;
+    font-size: 13px;
+    color: var(--warm-dark);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  /* ── Séances patient (dans fiche) ── */
+  .seance-line {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--beige-mid);
+    font-size: 13px;
+  }
+  .seance-line:last-child { border-bottom: none; }
+
+  /* ── Print ── */
+  @media print {
+    header, nav, .page-header .btn, .page-actions { display: none; }
+    main { padding: 0; max-width: 100%; }
+    .invoice-preview { border: none; box-shadow: none; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 560px) {
+    .form-row { grid-template-columns: 1fr; }
+    .inv-parties { grid-template-columns: 1fr; }
+    .inv-header { flex-direction: column; gap: 1rem; }
+    main { padding: 1rem; }
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--beige-mid); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">AR</div>
+  <div class="logo-text">
+    <div class="name">Aude RAFSTEDT</div>
+    <div class="subtitle">Cabinet de Psychothérapie</div>
+  </div>
+</header>
+
+<nav>
+  <button class="nav-btn active" onclick="showPage('dashboard', this)">
+    <span class="nav-icon">◆</span> Tableau de bord
+  </button>
+  <button class="nav-btn" onclick="showPage('patients', this)">
+    <span class="nav-icon">◈</span> Patients
+  </button>
+  <button class="nav-btn" onclick="showPage('seances', this)">
+    <span class="nav-icon">◷</span> Séances
+  </button>
+  <button class="nav-btn" onclick="showPage('factures', this)">
+    <span class="nav-icon">◻</span> Factures
+  </button>
+</nav>
+
+<main>
+
+  <!-- ════════════════════════════════
+       DASHBOARD
+  ════════════════════════════════ -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <h1 class="page-title">Bonjour, Aude</h1>
+    </div>
+
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Patients actifs</div>
+        <div class="stat-value" id="stat-patients">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Séances ce mois</div>
+        <div class="stat-value" id="stat-seances-mois">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">À facturer</div>
+        <div class="stat-value" id="stat-a-facturer">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">CA ce mois</div>
+        <div class="stat-value" id="stat-ca" style="font-size:22px;">0 €</div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; align-items:start;">
+      <!-- Calendrier -->
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+          <div style="font-family:var(--font-serif); font-size:17px;" id="cal-title">—</div>
+          <div style="display:flex; gap:4px;">
+            <button class="btn btn-secondary btn-sm" onclick="calNav(-1)">‹</button>
+            <button class="btn btn-secondary btn-sm" onclick="calNav(1)">›</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendar"></div>
+      </div>
+
+      <!-- Prochaines séances -->
+      <div class="card" style="max-height:340px; overflow-y:auto;">
+        <div class="section-title">Prochaines séances</div>
+        <div id="upcoming-list">
+          <div class="empty-state"><p>Aucune séance planifiée</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       PATIENTS
+  ════════════════════════════════ -->
+  <div class="page" id="page-patients">
+    <div class="page-header">
+      <h1 class="page-title">Patients</h1>
+      <button class="btn btn-primary" onclick="openModal('modal-patient')">+ Nouveau patient</button>
+    </div>
+
+    <div class="search-bar">
+      <span class="search-icon">⌕</span>
+      <input type="text" placeholder="Rechercher un patient…" id="search-patients" oninput="renderPatients()">
+    </div>
+
+    <div class="card-grid" id="patients-list">
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-icon">◈</div>
+        <p>Aucun patient enregistré</p>
+        <button class="btn btn-primary" onclick="openModal('modal-patient')">+ Ajouter un patient</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       SÉANCES
+  ════════════════════════════════ -->
+  <div class="page" id="page-seances">
+    <div class="page-header">
+      <h1 class="page-title">Séances</h1>
+      <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Nouvelle séance</button>
+    </div>
+
+    <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+      <select id="filter-statut" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid); font-size:13px; cursor:pointer;" onchange="renderSeances()">
+        <option value="">Tous les statuts</option>
+        <option value="planifié">Planifiées</option>
+        <option value="honoré">Honorées</option>
+        <option value="annulé">Annulées</option>
+      </select>
+      <select id="filter-patient-seance" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid); font-size:13px; cursor:pointer;" onchange="renderSeances()">
+        <option value="">Tous les patients</option>
+      </select>
+    </div>
+
+    <div id="seances-list">
+      <div class="empty-state">
+        <div class="empty-icon">◷</div>
+        <p>Aucune séance enregistrée</p>
+        <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Ajouter une séance</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       FACTURES
+  ════════════════════════════════ -->
+  <div class="page" id="page-factures">
+    <div class="page-header">
+      <h1 class="page-title">Factures</h1>
+      <button class="btn btn-primary" onclick="openModal('modal-facture')">+ Nouvelle facture</button>
+    </div>
+
+    <div id="factures-list">
+      <div class="card">
+        <div class="empty-state">
+          <div class="empty-icon">◻</div>
+          <p>Aucune facture générée</p>
+          <button class="btn btn-primary" onclick="openModal('modal-facture')">+ Créer une facture</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ════════════════════════════════
+     MODALS
+════════════════════════════════ -->
+
+<!-- Modal patient -->
+<div class="modal-overlay hidden" id="modal-patient">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-patient')">✕</button>
+    <h2 class="modal-title" id="modal-patient-title">Nouveau patient</h2>
+    <input type="hidden" id="patient-edit-id">
+
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="showTab('tab-infos', this)">Informations</button>
+      <button class="tab-btn" onclick="showTab('tab-notes', this)">Notes thérapeutiques</button>
+    </div>
+
+    <div id="tab-infos">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prénom *</label>
+          <input type="text" id="p-prenom" placeholder="Prénom">
+        </div>
+        <div class="form-group">
+          <label>Nom *</label>
+          <input type="text" id="p-nom" placeholder="NOM">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date de naissance</label>
+          <input type="date" id="p-naissance">
+        </div>
+        <div class="form-group">
+          <label>Téléphone</label>
+          <input type="tel" id="p-tel" placeholder="06 xx xx xx xx">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="p-email" placeholder="email@exemple.fr">
+      </div>
+      <div class="form-group">
+        <label>Adresse</label>
+        <input type="text" id="p-adresse" placeholder="Adresse complète">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tarif séance (€)</label>
+          <input type="number" id="p-tarif" value="60" step="5" min="0">
+        </div>
+        <div class="form-group">
+          <label>Statut</label>
+          <select id="p-statut">
+            <option value="actif">Actif</option>
+            <option value="inactif">Inactif</option>
+            <option value="suivi-terminé">Suivi terminé</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Motif de consultation</label>
+        <input type="text" id="p-motif" placeholder="Ex : anxiété, relations, deuil…">
+      </div>
+    </div>
+
+    <div id="tab-notes" style="display:none;">
+      <div class="form-group">
+        <label>Notes confidentielles</label>
+        <textarea id="p-notes" rows="8" placeholder="Notes de suivi thérapeutique…&#10;(Ces informations restent strictement confidentielles)"></textarea>
+      </div>
+      <div style="font-size:11px; color:var(--warm-mid); margin-top:-0.5rem; padding: 0.5rem; background:var(--terra-pale); border-radius:var(--radius-sm); border:1px solid rgba(201,149,106,0.3);">
+        ⚑ Ces notes ne sont accessibles que depuis cet appareil et restent privées.
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-patient')">Annuler</button>
+      <button class="btn btn-primary" onclick="savePatient()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal séance -->
+<div class="modal-overlay hidden" id="modal-seance">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-seance')">✕</button>
+    <h2 class="modal-title" id="modal-seance-title">Nouvelle séance</h2>
+    <input type="hidden" id="seance-edit-id">
+
+    <div class="form-group">
+      <label>Patient *</label>
+      <select id="s-patient"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date *</label>
+        <input type="date" id="s-date">
+      </div>
+      <div class="form-group">
+        <label>Heure *</label>
+        <input type="time" id="s-heure" value="10:00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Durée (min)</label>
+        <select id="s-duree">
+          <option value="45">45 min</option>
+          <option value="50">50 min</option>
+          <option value="60" selected>60 min</option>
+          <option value="75">75 min</option>
+          <option value="90">90 min</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tarif (€)</label>
+        <input type="number" id="s-tarif" value="60" step="5" min="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Statut</label>
+        <select id="s-statut">
+          <option value="planifié">Planifiée</option>
+          <option value="honoré">Honorée</option>
+          <option value="annulé">Annulée</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Paiement</label>
+        <select id="s-paiement">
+          <option value="">— non défini —</option>
+          <option value="espèces">Espèces</option>
+          <option value="chèque">Chèque</option>
+          <option value="virement">Virement</option>
+          <option value="carte">Carte bancaire</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes de séance</label>
+      <textarea id="s-notes" rows="3" placeholder="Observations, éléments importants…"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-seance')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveSeance()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal fiche patient (lecture) -->
+<div class="modal-overlay hidden" id="modal-fiche">
+  <div class="modal" style="max-width:580px;">
+    <button class="modal-close" onclick="closeModal('modal-fiche')">✕</button>
+    <div id="fiche-content"></div>
+  </div>
+</div>
+
+<!-- Modal séance (lecture) -->
+<div class="modal-overlay hidden" id="modal-seance-view">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-seance-view')">✕</button>
+    <div id="seance-view-content"></div>
+  </div>
+</div>
+
+<!-- Modal facture génération -->
+<div class="modal-overlay hidden" id="modal-facture">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-facture')">✕</button>
+    <h2 class="modal-title">Nouvelle facture</h2>
+
+    <div class="form-group">
+      <label>Patient *</label>
+      <select id="f-patient" onchange="populateFactureSeances()"></select>
+    </div>
+    <div class="form-group">
+      <label>Séances à inclure</label>
+      <div id="f-seances-select" style="border:1.5px solid var(--beige-mid); border-radius:var(--radius-sm); padding:0.5rem; max-height:200px; overflow-y:auto; background:var(--white);">
+        <div style="color:var(--warm-mid); font-size:13px; padding:0.5rem;">Sélectionnez un patient d'abord</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date de facturation</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="form-group">
+        <label>Échéance paiement</label>
+        <input type="date" id="f-echeance">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Mention complémentaire</label>
+      <input type="text" id="f-mention" placeholder="Ex : Exonéré de TVA – Article 261-4-1° du CGI">
+    </div>
+    <div style="padding:0.75rem; background:var(--sage-pale); border-radius:var(--radius-sm); font-size:13px; color:var(--sage-dark); margin-bottom:0.5rem;">
+      Total estimé : <strong id="f-total-preview">0,00 €</strong>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-facture')">Annuler</button>
+      <button class="btn btn-primary" onclick="genererFacture()">Générer la facture</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal aperçu facture -->
+<div class="modal-overlay hidden" id="modal-facture-view">
+  <div class="modal" style="max-width:680px;">
+    <button class="modal-close" onclick="closeModal('modal-facture-view')">✕</button>
+    <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="printFacture()">🖨 Imprimer</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-facture-view')">Fermer</button>
+    </div>
+    <div id="facture-view-content"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast hidden" id="toast"></div>
+
+<script>
+// ── DATA STORE ──
+let DB = {
+  patients: [],
+  seances: [],
+  factures: [],
+  nextFactureNum: 1
+};
+
+function load() {
+  try {
+    const saved = localStorage.getItem('psy-cabinet-db');
+    if (saved) DB = JSON.parse(saved);
+  } catch(e) {}
+}
+
+function save() {
+  try { localStorage.setItem('psy-cabinet-db', JSON.stringify(DB)); } catch(e) {}
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ── NAV ──
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'patients') renderPatients();
+  if (id === 'seances') { populateFilterPatient(); renderSeances(); }
+  if (id === 'factures') renderFactures();
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.remove('hidden');
+  if (id === 'modal-patient') {
+    document.getElementById('patient-edit-id').value = '';
+    document.getElementById('modal-patient-title').textContent = 'Nouveau patient';
+    ['p-prenom','p-nom','p-tel','p-email','p-adresse','p-motif','p-notes'].forEach(f => document.getElementById(f).value = '');
+    document.getElementById('p-tarif').value = 60;
+    document.getElementById('p-statut').value = 'actif';
+    document.getElementById('p-naissance').value = '';
+    showTab('tab-infos', document.querySelector('#modal-patient .tab-btn'));
+  }
+  if (id === 'modal-seance') {
+    document.getElementById('seance-edit-id').value = '';
+    document.getElementById('modal-seance-title').textContent = 'Nouvelle séance';
+    populateSelectPatient('s-patient');
+    document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('s-heure').value = '10:00';
+    document.getElementById('s-duree').value = '60';
+    document.getElementById('s-tarif').value = 60;
+    document.getElementById('s-statut').value = 'planifié';
+    document.getElementById('s-paiement').value = '';
+    document.getElementById('s-notes').value = '';
+  }
+  if (id === 'modal-facture') {
+    populateSelectPatient('f-patient');
+    const today = new Date();
+    document.getElementById('f-date').value = today.toISOString().split('T')[0];
+    const echeance = new Date(today); echeance.setDate(echeance.getDate() + 30);
+    document.getElementById('f-echeance').value = echeance.toISOString().split('T')[0];
+    document.getElementById('f-mention').value = 'Exonéré de TVA – Article 261-4-1° du CGI';
+    document.getElementById('f-total-preview').textContent = '0,00 €';
+    populateFactureSeances();
+  }
+}
+
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function showTab(tabId, btn) {
+  document.querySelectorAll('#modal-patient [id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById(tabId).style.display = 'block';
+  document.querySelectorAll('#modal-patient .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 2500);
+}
+
+// ── PATIENTS ──
+function savePatient() {
+  const prenom = document.getElementById('p-prenom').value.trim();
+  const nom = document.getElementById('p-nom').value.trim();
+  if (!prenom || !nom) { alert('Prénom et nom sont requis.'); return; }
+
+  const id = document.getElementById('patient-edit-id').value;
+  const data = {
+    prenom, nom,
+    naissance: document.getElementById('p-naissance').value,
+    tel: document.getElementById('p-tel').value.trim(),
+    email: document.getElementById('p-email').value.trim(),
+    adresse: document.getElementById('p-adresse').value.trim(),
+    tarif: parseFloat(document.getElementById('p-tarif').value) || 60,
+    statut: document.getElementById('p-statut').value,
+    motif: document.getElementById('p-motif').value.trim(),
+    notes: document.getElementById('p-notes').value.trim(),
+    createdAt: id ? undefined : new Date().toISOString()
+  };
+
+  if (id) {
+    const idx = DB.patients.findIndex(p => p.id === id);
+    if (idx > -1) { data.id = id; data.createdAt = DB.patients[idx].createdAt; DB.patients[idx] = data; }
+  } else {
+    data.id = uid();
+    DB.patients.push(data);
+  }
+  save();
+  closeModal('modal-patient');
+  renderPatients();
+  toast('Patient enregistré ✓');
+}
+
+function editPatient(id) {
+  const p = DB.patients.find(p => p.id === id);
+  if (!p) return;
+  openModal('modal-patient');
+  document.getElementById('patient-edit-id').value = id;
+  document.getElementById('modal-patient-title').textContent = 'Modifier le patient';
+  document.getElementById('p-prenom').value = p.prenom;
+  document.getElementById('p-nom').value = p.nom;
+  document.getElementById('p-naissance').value = p.naissance || '';
+  document.getElementById('p-tel').value = p.tel || '';
+  document.getElementById('p-email').value = p.email || '';
+  document.getElementById('p-adresse').value = p.adresse || '';
+  document.getElementById('p-tarif').value = p.tarif;
+  document.getElementById('p-statut').value = p.statut;
+  document.getElementById('p-motif').value = p.motif || '';
+  document.getElementById('p-notes').value = p.notes || '';
+}
+
+function deletePatient(id) {
+  if (!confirm('Supprimer ce patient ? Ses séances resteront enregistrées.')) return;
+  DB.patients = DB.patients.filter(p => p.id !== id);
+  save();
+  renderPatients();
+  toast('Patient supprimé');
+}
+
+function viewPatient(id) {
+  const p = DB.patients.find(p => p.id === id);
+  if (!p) return;
+  const seances = DB.seances.filter(s => s.patientId === id).sort((a,b) => b.date.localeCompare(a.date));
+  const initials = (p.prenom[0] + p.nom[0]).toUpperCase();
+  const age = p.naissance ? Math.floor((Date.now() - new Date(p.naissance)) / 31557600000) + ' ans' : '';
+
+  let seancesHTML = seances.length === 0 ? '<div style="color:var(--warm-mid);font-size:13px;">Aucune séance enregistrée</div>' :
+    seances.map(s => `
+      <div class="seance-line">
+        <span style="color:var(--warm-mid);min-width:90px;">${formatDate(s.date)}</span>
+        <span style="color:var(--warm-mid);min-width:50px;">${s.heure}</span>
+        <span class="badge badge-${s.statut}">${s.statut}</span>
+        <span style="margin-left:auto;font-family:var(--font-serif);font-size:15px;">${s.tarif} €</span>
+      </div>
+    `).join('');
+
+  document.getElementById('fiche-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+      <div class="avatar" style="width:56px;height:56px;font-size:20px;">${initials}</div>
+      <div>
+        <div style="font-family:var(--font-serif);font-size:22px;font-weight:400;">${p.prenom} ${p.nom.toUpperCase()}</div>
+        <div style="font-size:12px;color:var(--warm-mid);">${age} ${p.motif ? '· ' + p.motif : ''}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:0.5rem;">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-fiche');editPatient('${id}')">Modifier</button>
+        <button class="btn btn-danger btn-sm" onclick="closeModal('modal-fiche');deletePatient('${id}')">Supprimer</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;font-size:13px;">
+      ${p.tel ? `<div><span style="color:var(--warm-mid);">Tél :</span> ${p.tel}</div>` : ''}
+      ${p.email ? `<div><span style="color:var(--warm-mid);">Email :</span> ${p.email}</div>` : ''}
+      ${p.adresse ? `<div style="grid-column:1/-1"><span style="color:var(--warm-mid);">Adresse :</span> ${p.adresse}</div>` : ''}
+      <div><span style="color:var(--warm-mid);">Tarif :</span> ${p.tarif} € / séance</div>
+      <div><span style="color:var(--warm-mid);">Statut :</span> <span class="badge badge-${p.statut === 'actif' ? 'honoré' : 'annulé'}">${p.statut}</span></div>
+    </div>
+    ${p.notes ? `<div class="section-title">Notes thérapeutiques</div><div class="notes-block">${p.notes}</div><div style="margin-bottom:1.25rem;"></div>` : ''}
+    <div class="section-title">Séances (${seances.length})</div>
+    <div>${seancesHTML}</div>
+  `;
+  document.getElementById('modal-fiche').classList.remove('hidden');
+}
+
+function renderPatients() {
+  const q = document.getElementById('search-patients').value.toLowerCase();
+  const list = document.getElementById('patients-list');
+  const filtered = DB.patients.filter(p =>
+    (p.prenom + ' ' + p.nom).toLowerCase().includes(q) ||
+    (p.motif || '').toLowerCase().includes(q)
+  );
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">◈</div>
+      <p>${DB.patients.length === 0 ? 'Aucun patient enregistré' : 'Aucun résultat pour « ' + q + ' »'}</p>
+      ${DB.patients.length === 0 ? '<button class="btn btn-primary" onclick="openModal(\'modal-patient\')">+ Ajouter un patient</button>' : ''}
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(p => {
+    const initials = (p.prenom[0] + p.nom[0]).toUpperCase();
+    const seancesCount = DB.seances.filter(s => s.patientId === p.id && s.statut === 'honoré').length;
+    return `
+      <div class="patient-card" onclick="viewPatient('${p.id}')">
+        <div class="avatar">${initials}</div>
+        <div class="patient-info">
+          <div class="patient-name">${p.prenom} ${p.nom.toUpperCase()}</div>
+          <div class="patient-meta">${p.motif || 'Motif non précisé'} · ${seancesCount} séance${seancesCount > 1 ? 's' : ''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <span class="badge badge-${p.statut === 'actif' ? 'honoré' : 'annulé'}" style="font-size:10px;">${p.statut}</span>
+          <span style="font-family:var(--font-serif);font-size:16px;color:var(--warm-dark);">${p.tarif} €</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── SÉANCES ──
+function saveSeance() {
+  const patientId = document.getElementById('s-patient').value;
+  const date = document.getElementById('s-date').value;
+  const heure = document.getElementById('s-heure').value;
+  if (!patientId || !date || !heure) { alert('Patient, date et heure sont requis.'); return; }
+
+  const id = document.getElementById('seance-edit-id').value;
+  const tarif = parseFloat(document.getElementById('s-tarif').value) || 60;
+  const data = {
+    patientId,
+    date, heure,
+    duree: parseInt(document.getElementById('s-duree').value),
+    tarif,
+    statut: document.getElementById('s-statut').value,
+    paiement: document.getElementById('s-paiement').value,
+    notes: document.getElementById('s-notes').value.trim(),
+    facture: id ? undefined : null
+  };
+
+  if (id) {
+    const idx = DB.seances.findIndex(s => s.id === id);
+    if (idx > -1) { data.id = id; data.facture = DB.seances[idx].facture; DB.seances[idx] = data; }
+  } else {
+    data.id = uid();
+    DB.seances.push(data);
+  }
+  save();
+  closeModal('modal-seance');
+  renderSeances();
+  renderDashboard();
+  toast('Séance enregistrée ✓');
+}
+
+function editSeance(id) {
+  const s = DB.seances.find(s => s.id === id);
+  if (!s) return;
+  closeModal('modal-seance-view');
+  openModal('modal-seance');
+  setTimeout(() => {
+    document.getElementById('seance-edit-id').value = id;
+    document.getElementById('modal-seance-title').textContent = 'Modifier la séance';
+    document.getElementById('s-patient').value = s.patientId;
+    document.getElementById('s-date').value = s.date;
+    document.getElementById('s-heure').value = s.heure;
+    document.getElementById('s-duree').value = s.duree;
+    document.getElementById('s-tarif').value = s.tarif;
+    document.getElementById('s-statut').value = s.statut;
+    document.getElementById('s-paiement').value = s.paiement || '';
+    document.getElementById('s-notes').value = s.notes || '';
+  }, 50);
+}
+
+function deleteSeance(id) {
+  if (!confirm('Supprimer cette séance ?')) return;
+  DB.seances = DB.seances.filter(s => s.id !== id);
+  save();
+  closeModal('modal-seance-view');
+  renderSeances();
+  renderDashboard();
+  toast('Séance supprimée');
+}
+
+function viewSeance(id) {
+  const s = DB.seances.find(s => s.id === id);
+  if (!s) return;
+  const p = DB.patients.find(p => p.id === s.patientId);
+  const pName = p ? p.prenom + ' ' + p.nom.toUpperCase() : 'Patient inconnu';
+  document.getElementById('seance-view-content').innerHTML = `
+    <h2 class="modal-title" style="margin-bottom:1.25rem;">Séance du ${formatDate(s.date)}</h2>
+    <div style="display:grid;gap:0.75rem;font-size:14px;margin-bottom:1.5rem;">
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <span style="color:var(--warm-mid);min-width:100px;">Patient</span>
+        <strong>${pName}</strong>
+      </div>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <span style="color:var(--warm-mid);min-width:100px;">Date & Heure</span>
+        <span>${formatDate(s.date)} à ${s.heure}</span>
+      </div>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <span style="color:var(--warm-mid);min-width:100px;">Durée</span>
+        <span>${s.duree} min</span>
+      </div>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <span style="color:var(--warm-mid);min-width:100px;">Tarif</span>
+        <span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span>
+      </div>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <span style="color:var(--warm-mid);min-width:100px;">Statut</span>
+        <span class="badge badge-${s.statut}">${s.statut}</span>
+      </div>
+      ${s.paiement ? `<div style="display:flex;gap:0.75rem;align-items:center;">
+        <span style="color:var(--warm-mid);min-width:100px;">Paiement</span>
+        <span>${s.paiement}</span>
+      </div>` : ''}
+      ${s.facture ? `<div style="display:flex;gap:0.75rem;align-items:center;">
+        <span style="color:var(--warm-mid);min-width:100px;">Facture</span>
+        <span class="badge badge-honoré">Facturée</span>
+      </div>` : ''}
+    </div>
+    ${s.notes ? `<div class="section-title">Notes</div><div class="notes-block">${s.notes}</div><div style="margin-bottom:1rem;"></div>` : ''}
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="editSeance('${id}')">Modifier</button>
+      ${s.statut === 'planifié' ? `<button class="btn btn-primary" onclick="marquerHonore('${id}')">✓ Marquer honorée</button>` : ''}
+      <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteSeance('${id}')">Supprimer</button>
+    </div>
+  `;
+  document.getElementById('modal-seance-view').classList.remove('hidden');
+}
+
+function marquerHonore(id) {
+  const s = DB.seances.find(s => s.id === id);
+  if (s) { s.statut = 'honoré'; save(); closeModal('modal-seance-view'); renderSeances(); renderDashboard(); toast('Séance marquée comme honorée ✓'); }
+}
+
+function populateFilterPatient() {
+  const sel = document.getElementById('filter-patient-seance');
+  sel.innerHTML = '<option value="">Tous les patients</option>' +
+    DB.patients.map(p => `<option value="${p.id}">${p.prenom} ${p.nom.toUpperCase()}</option>`).join('');
+}
+
+function renderSeances() {
+  const statut = document.getElementById('filter-statut').value;
+  const patientId = document.getElementById('filter-patient-seance').value;
+  let list = [...DB.seances].sort((a,b) => b.date.localeCompare(a.date) || b.heure.localeCompare(a.heure));
+  if (statut) list = list.filter(s => s.statut === statut);
+  if (patientId) list = list.filter(s => s.patientId === patientId);
+
+  const el = document.getElementById('seances-list');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">◷</div><p>Aucune séance correspondante</p></div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(s => {
+    const p = DB.patients.find(p => p.id === s.patientId);
+    const pName = p ? p.prenom + ' ' + p.nom.toUpperCase() : '—';
+    const d = s.date.split('-');
+    const mois = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][parseInt(d[1])-1];
+    return `
+      <div class="rdv-item" onclick="viewSeance('${s.id}')">
+        <div class="rdv-date">
+          <div class="day">${d[2]}</div>
+          <div class="month">${mois}</div>
+        </div>
+        <div class="rdv-info">
+          <div class="rdv-patient">${pName}</div>
+          <div class="rdv-time">${s.heure} · ${s.duree} min${s.paiement ? ' · ' + s.paiement : ''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span class="badge badge-${s.statut}">${s.statut}</span>
+          <span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── FACTURES ──
+function populateSelectPatient(selId) {
+  const sel = document.getElementById(selId);
+  sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+    DB.patients.map(p => `<option value="${p.id}">${p.prenom} ${p.nom.toUpperCase()}</option>`).join('');
+}
+
+function populateFactureSeances() {
+  const pId = document.getElementById('f-patient').value;
+  const container = document.getElementById('f-seances-select');
+  if (!pId) {
+    container.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;padding:0.5rem;">Sélectionnez un patient d\'abord</div>';
+    document.getElementById('f-total-preview').textContent = '0,00 €';
+    return;
+  }
+  const seances = DB.seances.filter(s => s.patientId === pId && s.statut === 'honoré' && !s.facture);
+  if (seances.length === 0) {
+    container.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;padding:0.5rem;">Aucune séance honorée et non facturée</div>';
+    document.getElementById('f-total-preview').textContent = '0,00 €';
+    return;
+  }
+  container.innerHTML = seances.map(s => `
+    <label style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--beige)'" onmouseout="this.style.background=''">
+      <input type="checkbox" class="f-seance-cb" value="${s.id}" data-tarif="${s.tarif}" onchange="updateFactureTotal()" style="width:auto;accent-color:var(--sage);">
+      <span style="flex:1;font-size:13px;">${formatDate(s.date)} à ${s.heure}</span>
+      <span style="font-family:var(--font-serif);font-size:15px;">${s.tarif} €</span>
+    </label>
+  `).join('');
+  updateFactureTotal();
+}
+
+function updateFactureTotal() {
+  const cbs = document.querySelectorAll('.f-seance-cb:checked');
+  const total = Array.from(cbs).reduce((acc, cb) => acc + parseFloat(cb.dataset.tarif), 0);
+  document.getElementById('f-total-preview').textContent = total.toFixed(2).replace('.', ',') + ' €';
+}
+
+function genererFacture() {
+  const pId = document.getElementById('f-patient').value;
+  const cbs = document.querySelectorAll('.f-seance-cb:checked');
+  if (!pId || cbs.length === 0) { alert('Sélectionnez un patient et au moins une séance.'); return; }
+
+  const num = 'FAC-' + new Date().getFullYear() + '-' + String(DB.nextFactureNum).padStart(4, '0');
+  DB.nextFactureNum++;
+
+  const seancesIds = Array.from(cbs).map(cb => cb.value);
+  const seances = seancesIds.map(id => DB.seances.find(s => s.id === id));
+  const total = seances.reduce((acc, s) => acc + s.tarif, 0);
+  const p = DB.patients.find(p => p.id === pId);
+
+  const facture = {
+    id: uid(),
+    num,
+    patientId: pId,
+    seancesIds,
+    date: document.getElementById('f-date').value,
+    echeance: document.getElementById('f-echeance').value,
+    mention: document.getElementById('f-mention').value,
+    total,
+    createdAt: new Date().toISOString()
+  };
+
+  DB.factures.push(facture);
+  seancesIds.forEach(id => { const s = DB.seances.find(s => s.id === id); if (s) s.facture = facture.id; });
+  save();
+  closeModal('modal-facture');
+  renderFactures();
+  toast('Facture ' + num + ' générée ✓');
+  setTimeout(() => viewFacture(facture.id), 300);
+}
+
+function viewFacture(id) {
+  const f = DB.factures.find(f => f.id === id);
+  if (!f) return;
+  const p = DB.patients.find(p => p.id === f.patientId);
+  const seances = f.seancesIds.map(sid => DB.seances.find(s => s.id === sid)).filter(Boolean);
+
+  const lignes = seances.map(s => `
+    <tr>
+      <td>${formatDate(s.date)} à ${s.heure}</td>
+      <td>Séance de psychothérapie – ${s.duree} min</td>
+      <td style="text-align:center;">1</td>
+      <td style="text-align:right;font-family:var(--font-serif);">${s.tarif.toFixed(2).replace('.',',')} €</td>
+      <td style="text-align:right;font-family:var(--font-serif);">${s.tarif.toFixed(2).replace('.',',')} €</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('facture-view-content').innerHTML = `
+    <div class="invoice-preview" id="printable-invoice">
+      <div class="inv-header">
+        <div>
+          <div class="inv-logo-name">Aude RAFSTEDT</div>
+          <div class="inv-logo-sub">Psychopraticienne · AT Psy Paris</div>
+          <div style="margin-top:0.75rem;font-size:12px;color:var(--warm-mid);line-height:1.6;">
+            14 avenue Pierre Mendès France<br>72000 Le Mans<br>
+            06.32.49.19.77<br>
+            SIRET : 991 119 595 00015
+          </div>
+        </div>
+        <div class="inv-num-block">
+          <div class="inv-num-label">Facture</div>
+          <div class="inv-num-value">${f.num}</div>
+          <div style="font-size:12px;color:var(--warm-mid);margin-top:0.4rem;">
+            Date : ${formatDate(f.date)}<br>
+            Échéance : ${formatDate(f.echeance)}
+          </div>
+        </div>
+      </div>
+      <div class="inv-parties">
+        <div>
+          <div class="inv-party-label">Praticienne</div>
+          <div class="inv-party-name">Aude RAFSTEDT</div>
+          <div class="inv-party-detail">Psychopraticienne<br>14 av. Pierre Mendès France<br>72000 Le Mans</div>
+        </div>
+        <div>
+          <div class="inv-party-label">Patient</div>
+          <div class="inv-party-name">${p ? p.prenom + ' ' + p.nom.toUpperCase() : '—'}</div>
+          <div class="inv-party-detail">${p && p.adresse ? p.adresse : ''}</div>
+        </div>
+      </div>
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th style="width:22%;">Date</th>
+            <th>Prestation</th>
+            <th style="width:8%;text-align:center;">Qté</th>
+            <th style="width:16%;text-align:right;">P.U.</th>
+            <th style="width:16%;text-align:right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>${lignes}</tbody>
+      </table>
+      <div style="border-top:1.5px solid var(--beige-mid);padding-top:1rem;margin-bottom:1rem;">
+        <div class="inv-total-row">
+          <span class="inv-total-label">Sous-total HT</span>
+          <span class="inv-total-value">${f.total.toFixed(2).replace('.',',')} €</span>
+        </div>
+        <div class="inv-total-row">
+          <span class="inv-total-label">TVA (exonérée)</span>
+          <span class="inv-total-value">0,00 €</span>
+        </div>
+        <div class="inv-total-row">
+          <span class="inv-total-label" style="font-weight:500;color:var(--warm-dark);">Total TTC</span>
+          <span class="inv-total-value inv-grand-total">${f.total.toFixed(2).replace('.',',')} €</span>
+        </div>
+      </div>
+      ${f.mention ? `<div style="font-size:11px;color:var(--warm-mid);background:var(--beige);padding:0.5rem 0.75rem;border-radius:4px;margin-bottom:1rem;">${f.mention}</div>` : ''}
+      <div class="inv-footer">
+        Cabinet de psychothérapie – Aude RAFSTEDT · SIRET 991 119 595 00015<br>
+        Règlement par espèces, chèque (à l'ordre de Aude RAFSTEDT) ou virement<br>
+        <em>Psychopraticienne formée à l'Analyse Transactionnelle à AT Psy Paris</em>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-facture-view').classList.remove('hidden');
+}
+
+function printFacture() {
+  const content = document.getElementById('printable-invoice').outerHTML;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Facture</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{--sage:#6b8f71;--sage-dark:#4a6b50;--sage-pale:#e8f0e9;--sage-light:#a8c4a2;--terra-pale:#f5e8de;--beige:#f7f3ee;--beige-mid:#ede5d8;--warm-dark:#3d3530;--warm-mid:#7a6e67;--font-serif:'Cormorant Garamond',Georgia,serif;--font-sans:'DM Sans',system-ui,sans-serif;--radius:12px;--radius-sm:8px;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-sans);color:var(--warm-dark);padding:2rem;}
+    .invoice-preview{max-width:700px;margin:0 auto;}
+    .inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;}
+    .inv-logo-name{font-family:var(--font-serif);font-size:22px;font-weight:400;color:var(--sage-dark);}
+    .inv-logo-sub{font-size:11px;color:var(--warm-mid);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;}
+    .inv-num-block{text-align:right;}
+    .inv-num-label{font-size:11px;color:var(--warm-mid);font-weight:500;text-transform:uppercase;letter-spacing:0.06em;}
+    .inv-num-value{font-size:18px;font-family:var(--font-serif);color:var(--warm-dark);}
+    .inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.75rem;padding:1.25rem;background:var(--beige);border-radius:var(--radius-sm);}
+    .inv-party-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--warm-mid);margin-bottom:0.4rem;}
+    .inv-party-name{font-size:14px;font-weight:500;margin-bottom:0.2rem;}
+    .inv-party-detail{font-size:12px;color:var(--warm-mid);line-height:1.5;}
+    .inv-table{width:100%;border-collapse:collapse;margin-bottom:1.5rem;font-size:13px;}
+    .inv-table th{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--warm-mid);font-weight:500;border-bottom:1.5px solid var(--beige-mid);padding:0.5rem 0.75rem;text-align:left;}
+    .inv-table td{padding:0.75rem;border-bottom:1px solid var(--beige-mid);}
+    .inv-total-row{display:flex;justify-content:flex-end;margin-bottom:0.5rem;}
+    .inv-total-label{font-size:12px;color:var(--warm-mid);min-width:120px;text-align:right;margin-right:1rem;}
+    .inv-total-value{font-size:15px;font-weight:500;min-width:80px;text-align:right;}
+    .inv-grand-total{font-family:var(--font-serif);font-size:22px;color:var(--sage-dark);}
+    .inv-footer{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--beige-mid);font-size:11px;color:var(--warm-mid);line-height:1.6;}
+  </style></head><body>${content}</body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 500);
+}
+
+function renderFactures() {
+  const el = document.getElementById('factures-list');
+  if (DB.factures.length === 0) {
+    el.innerHTML = `<div class="card"><div class="empty-state"><div class="empty-icon">◻</div><p>Aucune facture générée</p><button class="btn btn-primary" onclick="openModal('modal-facture')">+ Créer une facture</button></div></div>`;
+    return;
+  }
+  const sorted = [...DB.factures].sort((a,b) => b.date.localeCompare(a.date));
+  el.innerHTML = `<div class="card" style="padding:0;">` +
+    sorted.map(f => {
+      const p = DB.patients.find(p => p.id === f.patientId);
+      const pName = p ? p.prenom + ' ' + p.nom.toUpperCase() : '—';
+      return `<div class="invoice-row" onclick="viewFacture('${f.id}')">
+        <div class="inv-num">${f.num}</div>
+        <div class="inv-info">
+          <div class="inv-patient">${pName}</div>
+          <div class="inv-date">${formatDate(f.date)} · ${f.seancesIds.length} séance${f.seancesIds.length > 1 ? 's' : ''}</div>
+        </div>
+        <div class="inv-amount">${f.total.toFixed(2).replace('.',',')} €</div>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+// ── DASHBOARD ──
+let calDate = new Date();
+
+function renderDashboard() {
+  const now = new Date();
+  const mois = now.getMonth();
+  const annee = now.getFullYear();
+
+  document.getElementById('stat-patients').textContent = DB.patients.filter(p => p.statut === 'actif').length;
+  const seancesMois = DB.seances.filter(s => {
+    const d = new Date(s.date);
+    return d.getMonth() === mois && d.getFullYear() === annee && s.statut === 'honoré';
+  });
+  document.getElementById('stat-seances-mois').textContent = seancesMois.length;
+  const aFacturer = DB.seances.filter(s => s.statut === 'honoré' && !s.facture).length;
+  document.getElementById('stat-a-facturer').textContent = aFacturer;
+  const ca = seancesMois.reduce((acc, s) => acc + s.tarif, 0);
+  document.getElementById('stat-ca').textContent = ca.toFixed(0) + ' €';
+
+  renderCalendar();
+  renderUpcoming();
+}
+
+function calNav(dir) { calDate.setMonth(calDate.getMonth() + dir); renderCalendar(); }
+
+function renderCalendar() {
+  const moisNoms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const today = new Date();
+  const yr = calDate.getFullYear(), mo = calDate.getMonth();
+  document.getElementById('cal-title').textContent = moisNoms[mo] + ' ' + yr;
+
+  const firstDay = new Date(yr, mo, 1).getDay(); // 0=sun
+  const startOffset = (firstDay + 6) % 7; // mon=0
+  const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+
+  const rdvDays = new Set(
+    DB.seances.filter(s => { const d = new Date(s.date); return d.getMonth() === mo && d.getFullYear() === yr; })
+              .map(s => parseInt(s.date.split('-')[2]))
+  );
+
+  const dayNames = ['Lu','Ma','Me','Je','Ve','Sa','Di'];
+  let html = dayNames.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+  for (let i = 0; i < startOffset; i++) html += '<div class="cal-day empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = d === today.getDate() && mo === today.getMonth() && yr === today.getFullYear();
+    html += `<div class="cal-day${isToday ? ' today' : ''}${rdvDays.has(d) ? ' has-rdv' : ''}">${d}</div>`;
+  }
+  document.getElementById('calendar').innerHTML = html;
+}
+
+function renderUpcoming() {
+  const now = new Date().toISOString().split('T')[0];
+  const upcoming = DB.seances
+    .filter(s => s.date >= now && s.statut === 'planifié')
+    .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure))
+    .slice(0, 8);
+
+  const el = document.getElementById('upcoming-list');
+  if (upcoming.length === 0) {
+    el.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;padding:0.5rem 0;">Aucune séance à venir</div>';
+    return;
+  }
+  el.innerHTML = upcoming.map(s => {
+    const p = DB.patients.find(p => p.id === s.patientId);
+    const pName = p ? p.prenom + ' ' + p.nom : '—';
+    const d = s.date.split('-');
+    const mois = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][parseInt(d[1])-1];
+    return `<div class="seance-line" onclick="viewSeance('${s.id}')" style="cursor:pointer;">
+      <span style="color:var(--warm-mid);font-size:12px;min-width:70px;">${d[2]} ${mois} ${s.heure}</span>
+      <span style="font-size:13px;font-weight:500;">${pName}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── HELPERS ──
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  const moisNoms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  return parseInt(d) + ' ' + moisNoms[parseInt(m)-1] + ' ' + y;
+}
+
+// Fermer modal en cliquant dehors
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
+});
+
+// Sync tarif patient → séance
+document.getElementById('s-patient').addEventListener('change', function() {
+  const p = DB.patients.find(p => p.id === this.value);
+  if (p) document.getElementById('s-tarif').value = p.tarif;
+});
+
+// Init
+load();
+renderDashboard();
+renderPatients();
+
+// PWA manifest inline
+const manifest = {
+  name: 'Cabinet Aude RAFSTEDT',
+  short_name: 'Cabinet Psy',
+  description: 'Gestion patientèle, séances et factures',
+  start_url: '.',
+  display: 'standalone',
+  background_color: '#f7f3ee',
+  theme_color: '#6b8f71',
+  icons: [{
+    src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="%236b8f71"/><text x="32" y="44" text-anchor="middle" font-family="serif" font-size="28" fill="white">AR</text></svg>',
+    sizes: '64x64',
+    type: 'image/svg+xml'
+  }]
+};
+const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(blob));
+</script>
+</body>
+</html>
