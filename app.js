@@ -626,6 +626,7 @@ function viewSeance(id, returnPatientId = '') {
       <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-seance-view');editSeance('${id}')">✎ Modifier</button>
       ${s.statut === 'planifié' ? `
         <button class="btn btn-success btn-sm" onclick="marquerStatut('${id}','honoré')">✓ Honorée</button>
+        <button class="btn btn-info btn-sm" onclick="openModalReglement('${id}')">💶 Honorée et Réglée</button>
         <button class="btn btn-danger btn-sm" onclick="marquerStatut('${id}','annulé')">✕ Annuler</button>` : ''}
       ${s.statut === 'honoré' ? `
         <button class="btn btn-info btn-sm" onclick="marquerStatut('${id}','réglée')">💶 Marquer réglée</button>` : ''}
@@ -683,7 +684,7 @@ function populateSelectPat(selId) {
 function renderSeances() {
   const st  = document.getElementById('filter-statut').value;
   const pid = document.getElementById('filter-pat').value;
-  let list  = [...DB.seances].sort((a,b) => b.date.localeCompare(a.date) || b.heure.localeCompare(a.heure));
+  let list  = [...DB.seances].sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
   if (st)  list = list.filter(s => s.statut === st);
   if (pid) list = list.filter(s => s.patientId === pid);
   const el = document.getElementById('seances-list');
@@ -777,15 +778,10 @@ function genererFacture() {
   const ids    = Array.from(cbs).map(cb => cb.value);
   const seancesSelected = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
 
-  // Numérotation : ANNEE-JOURSEANCE-NOMPATIENT (première séance, nom sans espaces ni accents)
+  // Numérotation : ANNEE-JOURSEANCE-XX (numéro séquentiel sur 2 chiffres)
   const firstSeanceDate = [...seancesSelected].sort((a,b) => a.date.localeCompare(b.date))[0]?.date || today();
   const jourSeance = firstSeanceDate.replace(/-/g, '');
-  const patientNum = DB.patients.find(p => p.id === pId);
-  const nomPatient = (patientNum ? (patientNum.nom + patientNum.prenom) : 'PATIENT')
-    .toUpperCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Z0-9]/g, '');
-  const num   = yr + '-' + jourSeance + '-' + nomPatient;
+  const num   = yr + '-' + jourSeance + '-' + String(DB.nextNum).padStart(2, '0');
   DB.nextNum++;
 
   const seances = seancesSelected;
@@ -1058,7 +1054,20 @@ function renderDashboard() {
   // À facturer : réglées / honorées non encore facturées
   const regléesNonFact = DB.seances.filter(s => s.statut === 'réglée' && !s.facture).length;
   const honoréesNonFact = DB.seances.filter(s => s.statut === 'honoré' && !s.facture).length;
-  document.getElementById('st-f').textContent = regléesNonFact + ' / ' + (regléesNonFact + honoréesNonFact);
+  const totalAFacturer = regléesNonFact + honoréesNonFact;
+  document.getElementById('st-f').textContent = regléesNonFact + ' / ' + totalAFacturer;
+  const cardF = document.getElementById('st-f-card');
+  if (totalAFacturer > 0) {
+    cardF.style.cursor = 'pointer';
+    cardF.onclick = showAFacturerModal;
+    cardF.title   = 'Voir les séances à facturer';
+    cardF.classList.add('stat-card-clickable');
+  } else {
+    cardF.style.cursor = '';
+    cardF.onclick = null;
+    cardF.title   = '';
+    cardF.classList.remove('stat-card-clickable');
+  }
 
   // CA : total réglées du mois / total séances du mois
   const caReglees = honoreesMois.filter(s => s.statut === 'réglée').reduce((a, s) => a + s.tarif, 0);
@@ -1067,6 +1076,45 @@ function renderDashboard() {
 
   renderCalendar();
   renderUpcoming();
+}
+
+function showAFacturerModal() {
+  const seances = DB.seances
+    .filter(s => (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
+    .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+
+  // Grouper par patient
+  const byPatient = {};
+  seances.forEach(s => {
+    if (!byPatient[s.patientId]) byPatient[s.patientId] = [];
+    byPatient[s.patientId].push(s);
+  });
+
+  const html = Object.entries(byPatient).map(([pid, ss]) => {
+    const pn    = getPatientName(pid);
+    const total = ss.reduce((a, s) => a + s.tarif, 0);
+    const rows  = ss.map(s => `
+      <div style="display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;font-size:13px;border-bottom:1px solid var(--beige-mid);">
+        <span style="min-width:115px;color:var(--warm-mid);">${formatDateShort(s.date)} ${s.heure}</span>
+        <span class="badge badge-${s.statut}" style="font-size:10px;">${s.statut}</span>
+        ${s.paiement ? `<span style="font-size:11px;color:var(--warm-mid);">${s.paiement}</span>` : ''}
+        <span style="margin-left:auto;font-family:var(--font-serif);">${s.tarif} €</span>
+      </div>`).join('');
+    return `<div style="margin-bottom:1rem;border:1px solid var(--beige-mid);border-radius:var(--radius-sm);overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .85rem;background:var(--beige);">
+        <strong style="font-size:14px;">${pn}</strong>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <span style="font-family:var(--font-serif);font-size:15px;color:var(--sage-dark);">${fmtMoney(total)}</span>
+          <button class="btn btn-primary btn-sm" onclick="closeModal('modal-a-facturer');openModal('modal-facture');setTimeout(()=>{document.getElementById('f-patient').value='${pid}';populateFactureSeances();setTimeout(()=>{document.querySelectorAll('.f-cb').forEach(cb=>cb.checked=true);updateFTotal();},60);},120);">📄 Facturer</button>
+        </div>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+
+  document.getElementById('a-facturer-content').innerHTML = html ||
+    '<div style="color:var(--warm-mid);font-size:13px;">Aucune séance à facturer.</div>';
+  document.getElementById('modal-a-facturer').classList.remove('hidden');
 }
 
 function renderCalendar() {

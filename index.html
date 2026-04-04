@@ -128,7 +128,7 @@
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-label">Patients actifs</div><div class="stat-value" id="st-p">0</div></div>
       <div class="stat-card"><div class="stat-label">Séances ce mois</div><div class="stat-value" style="font-size:18px;" id="st-s">0</div><div class="stat-sublabel">honorées / planifiées</div></div>
-      <div class="stat-card"><div class="stat-label">À facturer</div><div class="stat-value" style="font-size:18px;" id="st-f">0</div><div class="stat-sublabel">réglées / honorées</div></div>
+      <div class="stat-card" id="st-f-card"><div class="stat-label">À facturer</div><div class="stat-value" style="font-size:18px;" id="st-f">0</div><div class="stat-sublabel">réglées / honorées</div></div>
       <div class="stat-card"><div class="stat-label">CA ce mois</div><div class="stat-value" style="font-size:18px;" id="st-ca">0 €</div><div class="stat-sublabel">réglé / total</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
@@ -500,6 +500,19 @@
       <button class="btn btn-secondary" onclick="closeModal('modal-facture-view')">Fermer</button>
     </div>
     <div id="facture-view-content"></div>
+  </div>
+</div>
+
+<!-- ── Modal À facturer ── -->
+<div class="modal-overlay hidden" id="modal-a-facturer">
+  <div class="modal" style="max-width:560px;">
+    <button class="modal-close" onclick="closeModal('modal-a-facturer')">✕</button>
+    <h2 class="modal-title">Séances à facturer</h2>
+    <div id="a-facturer-content" style="max-height:60vh;overflow-y:auto;margin-top:1rem;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-a-facturer')">Fermer</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-a-facturer');openModal('modal-facture')">+ Nouvelle facture</button>
+    </div>
   </div>
 </div>
 
