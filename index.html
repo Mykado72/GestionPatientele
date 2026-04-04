@@ -1,257 +1,107 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#6b8f71">
-<meta name="description" content="Cabinet de psychothérapie – Gestion patients, rendez-vous et facturation">
-<title>Cabinet Psychothérapie</title>
-<link rel="manifest" href="#" id="manifest-link">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-:root {
-  --sage:#6b8f71;--sage-light:#a8c4a2;--sage-pale:#e8f0e9;--sage-dark:#4a6b50;
-  --terra:#c9956a;--terra-pale:#f5e8de;
-  --beige:#f7f3ee;--beige-mid:#ede5d8;
-  --warm-dark:#3d3530;--warm-mid:#7a6e67;--warm-light:#b8afa8;
-  --white:#ffffff;--danger:#c0392b;--danger-pale:#fdf0ee;
-  --radius:12px;--radius-sm:8px;
-  --shadow:0 2px 16px rgba(61,53,48,.08);--shadow-lg:0 8px 32px rgba(61,53,48,.14);
-  --font-serif:'Cormorant Garamond',Georgia,serif;--font-sans:'DM Sans',system-ui,sans-serif;
-  --t:200ms ease;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--font-sans);background:var(--beige);color:var(--warm-dark);min-height:100vh;display:flex;flex-direction:column;}
-
-/* SETUP */
-#setup-screen{position:fixed;inset:0;background:var(--beige);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;}
-#setup-screen.hidden{display:none;}
-.setup-card{background:var(--white);border-radius:var(--radius);border:1px solid var(--beige-mid);padding:2rem;width:100%;max-width:540px;box-shadow:var(--shadow-lg);margin:auto;}
-.setup-logo{display:flex;align-items:center;gap:.75rem;margin-bottom:.4rem;}
-.setup-logo-mark{width:44px;height:44px;background:var(--sage);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-family:var(--font-serif);font-size:20px;flex-shrink:0;}
-.setup-logo-name{font-family:var(--font-serif);font-size:20px;font-weight:400;color:var(--sage-dark);}
-.setup-intro{font-size:13px;color:var(--warm-mid);margin-bottom:1.75rem;line-height:1.6;padding-left:56px;}
-.setup-section{font-family:var(--font-serif);font-size:16px;color:var(--warm-mid);font-style:italic;margin:1.25rem 0 .75rem;padding-bottom:.4rem;border-bottom:1px solid var(--beige-mid);}
-
-/* HEADER */
-header{background:var(--white);border-bottom:1px solid var(--beige-mid);padding:0 1.5rem;display:flex;align-items:center;gap:1rem;height:64px;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(61,53,48,.06);}
-.logo-mark{width:40px;height:40px;background:var(--sage);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-family:var(--font-serif);font-size:18px;flex-shrink:0;}
-.logo-text .name{font-family:var(--font-serif);font-size:16px;font-weight:500;letter-spacing:.02em;color:var(--warm-dark);line-height:1.2;}
-.logo-text .subtitle{font-size:11px;color:var(--warm-mid);font-weight:300;letter-spacing:.04em;text-transform:uppercase;}
-
-/* NAV */
-nav{background:var(--white);border-bottom:1px solid var(--beige-mid);display:flex;overflow-x:auto;scrollbar-width:none;}
-nav::-webkit-scrollbar{display:none;}
-.nav-btn{padding:.75rem 1.25rem;border:none;background:none;cursor:pointer;font-family:var(--font-sans);font-size:13px;font-weight:400;color:var(--warm-mid);white-space:nowrap;border-bottom:2px solid transparent;transition:var(--t);display:flex;align-items:center;gap:6px;}
-.nav-btn:hover{color:var(--sage-dark);background:var(--sage-pale);}
-.nav-btn.active{color:var(--sage-dark);border-bottom-color:var(--sage);font-weight:500;}
-
-/* LAYOUT */
-main{flex:1;padding:1.5rem;max-width:900px;width:100%;margin:0 auto;}
-.page{display:none;}.page.active{display:block;}
-.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;}
-.page-title{font-family:var(--font-serif);font-size:28px;font-weight:400;color:var(--warm-dark);}
-
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:6px;padding:.5rem 1rem;border-radius:var(--radius-sm);border:1.5px solid transparent;cursor:pointer;font-family:var(--font-sans);font-size:13px;font-weight:500;transition:var(--t);white-space:nowrap;text-decoration:none;}
-.btn-primary{background:var(--sage);color:white;border-color:var(--sage);}
-.btn-primary:hover{background:var(--sage-dark);border-color:var(--sage-dark);}
-.btn-secondary{background:var(--white);color:var(--warm-dark);border-color:var(--beige-mid);}
-.btn-secondary:hover{border-color:var(--sage-light);color:var(--sage-dark);}
-.btn-danger{background:var(--danger-pale);color:var(--danger);border-color:var(--danger);}
-.btn-danger:hover{background:var(--danger);color:white;}
-.btn-sm{padding:.3rem .7rem;font-size:12px;}
-
-/* CARDS */
-.card{background:var(--white);border-radius:var(--radius);border:1px solid var(--beige-mid);padding:1.25rem;box-shadow:var(--shadow);}
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;}
-
-/* STATS */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:2rem;}
-.stat-card{background:var(--white);border-radius:var(--radius);border:1px solid var(--beige-mid);padding:1rem 1.25rem;text-align:center;}
-.stat-label{font-size:11px;font-weight:500;color:var(--warm-mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem;}
-.stat-value{font-family:var(--font-serif);font-size:32px;font-weight:400;color:var(--sage-dark);line-height:1;}
-
-/* PATIENT */
-.patient-card{background:var(--white);border-radius:var(--radius);border:1px solid var(--beige-mid);padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;transition:var(--t);cursor:pointer;}
-.patient-card:hover{border-color:var(--sage-light);box-shadow:var(--shadow);}
-.avatar{width:44px;height:44px;border-radius:50%;background:var(--sage-pale);color:var(--sage-dark);font-family:var(--font-serif);font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:500;border:1.5px solid var(--sage-light);}
-
-/* SEANCES */
-.rdv-item{background:var(--white);border-radius:var(--radius);border:1px solid var(--beige-mid);padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;margin-bottom:.75rem;cursor:pointer;transition:var(--t);}
-.rdv-item:hover{border-color:var(--sage-light);box-shadow:var(--shadow);}
-.rdv-date{text-align:center;min-width:52px;background:var(--sage-pale);border-radius:var(--radius-sm);padding:.4rem;border:1px solid var(--sage-light);}
-.rdv-date .day{font-size:22px;font-family:var(--font-serif);color:var(--sage-dark);line-height:1;}
-.rdv-date .month{font-size:10px;text-transform:uppercase;color:var(--sage);font-weight:500;letter-spacing:.08em;}
-
-/* BADGES */
-.badge{display:inline-flex;align-items:center;padding:.2rem .6rem;border-radius:20px;font-size:11px;font-weight:500;}
-.badge-honoré{background:#e8f5e9;color:#388e3c;}
-.badge-annulé{background:var(--danger-pale);color:var(--danger);}
-.badge-planifié{background:#e3f2fd;color:#1565c0;}
-
-/* MODALS */
-.modal-overlay{position:fixed;inset:0;background:rgba(61,53,48,.45);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;}
-.modal-overlay.hidden{display:none;}
-.modal{background:var(--white);border-radius:var(--radius);width:100%;max-width:520px;padding:1.75rem;box-shadow:var(--shadow-lg);position:relative;margin:auto;}
-.modal-title{font-family:var(--font-serif);font-size:22px;font-weight:400;margin-bottom:1.25rem;color:var(--warm-dark);}
-.modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;cursor:pointer;color:var(--warm-mid);font-size:20px;line-height:1;padding:.2rem;}
-.modal-close:hover{color:var(--warm-dark);}
-.modal-actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:1.5rem;border-top:1px solid var(--beige-mid);padding-top:1.25rem;}
-
-/* FORMS */
-.form-group{margin-bottom:1rem;}
-.form-group label{display:block;font-size:12px;font-weight:500;color:var(--warm-mid);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:.6rem .85rem;border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:14px;color:var(--warm-dark);background:var(--white);outline:none;transition:var(--t);}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--sage);box-shadow:0 0 0 3px rgba(107,143,113,.12);}
-.form-group textarea{resize:vertical;min-height:80px;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
-.form-hint{font-size:11px;color:var(--warm-mid);margin-top:.25rem;line-height:1.4;}
-.req{color:var(--terra);margin-left:2px;}
-
-/* TABS */
-.tab-group{display:flex;gap:2px;margin-bottom:1.25rem;background:var(--beige);padding:3px;border-radius:var(--radius-sm);}
-.tab-btn{flex:1;padding:.4rem;border:none;background:none;cursor:pointer;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--warm-mid);border-radius:6px;transition:var(--t);}
-.tab-btn.active{background:var(--white);color:var(--warm-dark);box-shadow:0 1px 4px rgba(61,53,48,.08);}
-
-/* SEARCH */
-.search-bar{position:relative;margin-bottom:1.25rem;}
-.search-bar input{width:100%;padding:.65rem .9rem .65rem 2.4rem;border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:14px;color:var(--warm-dark);background:var(--white);outline:none;transition:var(--t);}
-.search-bar input:focus{border-color:var(--sage);}
-.search-icon{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--warm-light);font-size:14px;pointer-events:none;}
-
-/* INVOICE LIST */
-.invoice-row{display:flex;align-items:center;gap:1rem;padding:.85rem 1.25rem;border-bottom:1px solid var(--beige-mid);transition:var(--t);cursor:pointer;}
-.invoice-row:last-child{border-bottom:none;}
-.invoice-row:hover{background:var(--sage-pale);}
-
-/* INVOICE PREVIEW */
-.invoice-preview{background:var(--white);border-radius:var(--radius);border:1px solid var(--beige-mid);padding:2rem;font-family:var(--font-sans);}
-.inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;}
-.inv-logo-name{font-family:var(--font-serif);font-size:22px;font-weight:400;color:var(--sage-dark);}
-.inv-logo-sub{font-size:11px;color:var(--warm-mid);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
-.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.75rem;padding:1.25rem;background:var(--beige);border-radius:var(--radius-sm);}
-.inv-party-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--warm-mid);margin-bottom:.4rem;}
-.inv-party-name{font-size:14px;font-weight:500;margin-bottom:.2rem;}
-.inv-party-detail{font-size:12px;color:var(--warm-mid);line-height:1.6;}
-.inv-table{width:100%;border-collapse:collapse;margin-bottom:1.5rem;font-size:13px;}
-.inv-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--warm-mid);font-weight:500;border-bottom:1.5px solid var(--beige-mid);padding:.5rem .75rem;text-align:left;}
-.inv-table td{padding:.75rem;border-bottom:1px solid var(--beige-mid);vertical-align:top;}
-.inv-table tr:last-child td{border-bottom:none;}
-.inv-total-section{border-top:1.5px solid var(--beige-mid);padding-top:1rem;margin-bottom:1rem;}
-.inv-total-row{display:flex;justify-content:flex-end;margin-bottom:.4rem;}
-.inv-total-label{font-size:12px;color:var(--warm-mid);min-width:140px;text-align:right;margin-right:1rem;}
-.inv-total-value{font-size:14px;font-weight:500;min-width:90px;text-align:right;}
-.inv-grand-total-label{font-size:13px;font-weight:500;color:var(--warm-dark);}
-.inv-grand-total-value{font-family:var(--font-serif);font-size:22px;color:var(--sage-dark);}
-.inv-legal{font-size:11px;color:var(--warm-mid);background:var(--beige);padding:.6rem .85rem;border-radius:4px;margin-bottom:1rem;line-height:1.6;}
-.inv-payment-block{background:var(--sage-pale);border:1px solid var(--sage-light);border-radius:var(--radius-sm);padding:.75rem 1rem;font-size:12px;margin-bottom:1rem;line-height:1.6;}
-.inv-payment-block strong{color:var(--sage-dark);}
-.inv-footer{margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--beige-mid);font-size:11px;color:var(--warm-mid);line-height:1.7;}
-
-/* CALENDAR */
-.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.75rem;}
-.cal-day-name{text-align:center;font-size:10px;font-weight:500;color:var(--warm-mid);text-transform:uppercase;letter-spacing:.06em;padding:.2rem 0;}
-.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--warm-mid);border-radius:6px;cursor:pointer;transition:var(--t);position:relative;}
-.cal-day:hover{background:var(--sage-pale);color:var(--sage-dark);}
-.cal-day.today{background:var(--sage);color:white;font-weight:500;}
-.cal-day.has-rdv::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--terra);}
-.cal-day.today.has-rdv::after{background:rgba(255,255,255,.8);}
-.cal-day.empty{opacity:0;pointer-events:none;}
-
-/* SETTINGS */
-.settings-section{margin-bottom:2rem;}
-.settings-section-title{font-family:var(--font-serif);font-size:20px;font-weight:400;color:var(--warm-dark);margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--beige-mid);}
-.info-box{background:var(--terra-pale);border:1px solid rgba(201,149,106,.35);border-radius:var(--radius-sm);padding:.75rem 1rem;font-size:12px;color:var(--warm-dark);line-height:1.6;margin-bottom:1.25rem;}
-.info-box strong{color:var(--terra);}
-
-/* MISC */
-.section-title{font-family:var(--font-serif);font-size:16px;font-weight:400;color:var(--warm-mid);margin-bottom:.75rem;font-style:italic;}
-.notes-block{background:var(--beige);border-radius:var(--radius-sm);border:1px solid var(--beige-mid);padding:.85rem 1rem;font-size:13px;color:var(--warm-dark);line-height:1.6;white-space:pre-wrap;}
-.seance-line{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--beige-mid);font-size:13px;}
-.seance-line:last-child{border-bottom:none;}
-.empty-state{text-align:center;padding:3rem 1.5rem;color:var(--warm-mid);}
-.empty-state .ei{font-size:40px;margin-bottom:1rem;opacity:.5;}
-.empty-state p{font-size:14px;margin-bottom:1.25rem;}
-.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--warm-dark);color:white;padding:.75rem 1.25rem;border-radius:var(--radius-sm);font-size:13px;z-index:999;box-shadow:var(--shadow-lg);animation:su .2s ease;}
-@keyframes su{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-.toast.hidden{display:none;}
-
-@media(max-width:600px){.form-row{grid-template-columns:1fr;}.inv-parties{grid-template-columns:1fr;}.inv-header{flex-direction:column;gap:1rem;}main{padding:1rem;}.stats-grid{grid-template-columns:1fr 1fr;}}
-@media print{header,nav,.modal-actions,#no-print{display:none!important;}main{padding:0;max-width:100%;}.invoice-preview{border:none;box-shadow:none;}}
-::-webkit-scrollbar{width:6px;height:6px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--beige-mid);border-radius:3px;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6b8f71">
+  <meta name="description" content="Cabinet de psychothérapie – Gestion patients, rendez-vous et facturation">
+  <title>Cabinet Psychothérapie</title>
+  <link rel="manifest" href="#" id="manifest-link">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- SETUP SCREEN -->
+<!-- ══════════════════════════════════════
+     ÉCRAN DE CONFIGURATION INITIALE
+══════════════════════════════════════ -->
 <div id="setup-screen">
-<div class="setup-card">
-  <div class="setup-logo">
-    <div class="setup-logo-mark">✦</div>
-    <div class="setup-logo-name">Cabinet de Psychothérapie</div>
-  </div>
-  <p class="setup-intro">Bienvenue ! Renseignez vos informations professionnelles. Elles apparaîtront sur vos factures et resteront stockées uniquement sur cet appareil.</p>
+  <div class="setup-card">
+    <div class="setup-logo">
+      <div class="setup-logo-mark">✦</div>
+      <div class="setup-logo-name">Cabinet de Psychothérapie</div>
+    </div>
+    <p class="setup-intro">Bienvenue ! Renseignez vos informations professionnelles. Elles apparaîtront sur vos factures et resteront stockées uniquement sur cet appareil.</p>
 
-  <div class="setup-section">Identité professionnelle</div>
-  <div class="form-row">
-    <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="c-prenom" placeholder="Prénom"></div>
-    <div class="form-group"><label>Nom <span class="req">*</span></label><input type="text" id="c-nom" placeholder="NOM"></div>
-  </div>
-  <div class="form-row">
-    <div class="form-group"><label>Titre professionnel <span class="req">*</span></label><input type="text" id="c-titre" value="Psychopraticienne"></div>
-    <div class="form-group"><label>Formation / Organisme</label><input type="text" id="c-formation" placeholder="Ex : AT Psy Paris"></div>
-  </div>
+    <div class="setup-section">Identité professionnelle</div>
+    <div class="form-row">
+      <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="c-prenom" placeholder="Prénom"></div>
+      <div class="form-group"><label>Nom <span class="req">*</span></label><input type="text" id="c-nom" placeholder="NOM"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Titre professionnel <span class="req">*</span></label><input type="text" id="c-titre" value="Psychopraticienne"></div>
+      <div class="form-group"><label>Formation / Organisme</label><input type="text" id="c-formation" placeholder="Ex : AT Psy Paris"></div>
+    </div>
 
-  <div class="setup-section">Coordonnées du cabinet</div>
-  <div class="form-group"><label>Adresse <span class="req">*</span></label><input type="text" id="c-adresse" placeholder="Numéro et rue"></div>
-  <div class="form-row">
-    <div class="form-group"><label>Code postal <span class="req">*</span></label><input type="text" id="c-cp" placeholder="72000"></div>
-    <div class="form-group"><label>Ville <span class="req">*</span></label><input type="text" id="c-ville" placeholder="Le Mans"></div>
-  </div>
-  <div class="form-row">
-    <div class="form-group"><label>Téléphone</label><input type="tel" id="c-tel" placeholder="06 xx xx xx xx"></div>
-    <div class="form-group"><label>Email professionnel</label><input type="email" id="c-email" placeholder="contact@cabinet.fr"></div>
-  </div>
+    <div class="setup-section">Coordonnées du cabinet</div>
+    <div class="form-group"><label>Adresse <span class="req">*</span></label><input type="text" id="c-adresse" placeholder="Numéro et rue"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Code postal <span class="req">*</span></label><input type="text" id="c-cp" placeholder="72000"></div>
+      <div class="form-group"><label>Ville <span class="req">*</span></label><input type="text" id="c-ville" placeholder="Le Mans"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Téléphone</label><input type="tel" id="c-tel" placeholder="06 xx xx xx xx"></div>
+      <div class="form-group"><label>Email professionnel</label><input type="email" id="c-email" placeholder="contact@cabinet.fr"></div>
+    </div>
 
-  <div class="setup-section">Informations légales</div>
-  <div class="form-row">
-    <div class="form-group"><label>N° SIRET <span class="req">*</span></label><input type="text" id="c-siret" placeholder="000 000 000 00000" maxlength="17"><div class="form-hint">14 chiffres — obligatoire sur les factures</div></div>
-    <div class="form-group"><label>N° TVA intracommunautaire</label><input type="text" id="c-tva-num" placeholder="FR xx 000000000"><div class="form-hint">Facultatif si exonéré de TVA</div></div>
-  </div>
-  <div class="form-group"><label>Régime TVA <span class="req">*</span></label>
-    <select id="c-tva-mention" onchange="toggleTvaCustom('c')">
-      <option value="Exonéré de TVA – Art. 261-4-1° du CGI (soins à la personne)">Exonéré de TVA – Art. 261-4-1° CGI ← psychothérapeutes</option>
-      <option value="TVA non applicable – Art. 293 B du CGI (franchise en base)">TVA non applicable – Art. 293 B CGI (franchise en base)</option>
-      <option value="Assujetti à la TVA au taux de 20 %">Assujetti à la TVA 20 %</option>
-      <option value="custom">Autre (à préciser)</option>
-    </select>
-  </div>
-  <div class="form-group" id="c-tva-custom-group" style="display:none;"><label>Mention personnalisée</label><input type="text" id="c-tva-custom"></div>
-  <div class="form-row">
-    <div class="form-group"><label>Tarif séance par défaut (€) <span class="req">*</span></label><input type="number" id="c-tarif" value="60" min="0" step="5"></div>
-    <div class="form-group"><label>Délai paiement (jours)</label><input type="number" id="c-delai" value="30" min="0"></div>
-  </div>
+    <div class="setup-section">Informations légales</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>N° SIRET <span class="req">*</span></label>
+        <input type="text" id="c-siret" placeholder="000 000 000 00000" maxlength="17">
+        <div class="form-hint">14 chiffres — obligatoire sur les factures</div>
+      </div>
+      <div class="form-group">
+        <label>N° TVA intracommunautaire</label>
+        <input type="text" id="c-tva-num" placeholder="FR xx 000000000">
+        <div class="form-hint">Facultatif si exonéré de TVA</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Régime TVA <span class="req">*</span></label>
+      <select id="c-tva-mention" onchange="toggleTvaCustom('c')">
+        <option value="Exonéré de TVA – Art. 261-4-1° du CGI (soins à la personne)">Exonéré de TVA – Art. 261-4-1° CGI ← psychothérapeutes</option>
+        <option value="TVA non applicable – Art. 293 B du CGI (franchise en base)">TVA non applicable – Art. 293 B CGI (franchise en base)</option>
+        <option value="Assujetti à la TVA au taux de 20 %">Assujetti à la TVA 20 %</option>
+        <option value="custom">Autre (à préciser)</option>
+      </select>
+    </div>
+    <div class="form-group" id="c-tva-custom-group" style="display:none;">
+      <label>Mention personnalisée</label>
+      <input type="text" id="c-tva-custom">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tarif séance par défaut (€) <span class="req">*</span></label>
+        <input type="number" id="c-tarif" value="60" min="0" step="5">
+      </div>
+      <div class="form-group">
+        <label>Délai paiement factures (jours)</label>
+        <input type="number" id="c-delai" value="30" min="0">
+      </div>
+    </div>
 
-  <div class="setup-section">Coordonnées bancaires</div>
-  <div class="form-row">
-    <div class="form-group"><label>IBAN</label><input type="text" id="c-iban" placeholder="FR76 xxxx xxxx xxxx xxxx xxxx xxx"></div>
-    <div class="form-group"><label>BIC / SWIFT</label><input type="text" id="c-bic" placeholder="XXXXFRPP"></div>
-  </div>
-  <div class="form-row">
-    <div class="form-group"><label>Banque</label><input type="text" id="c-banque" placeholder="Crédit Agricole…"></div>
-    <div class="form-group"><label>Modes de paiement acceptés</label><input type="text" id="c-paiements" value="Espèces, chèque, virement bancaire"></div>
-  </div>
+    <div class="setup-section">Coordonnées bancaires</div>
+    <div class="form-row">
+      <div class="form-group"><label>IBAN</label><input type="text" id="c-iban" placeholder="FR76 xxxx xxxx xxxx xxxx xxxx xxx"></div>
+      <div class="form-group"><label>BIC / SWIFT</label><input type="text" id="c-bic" placeholder="XXXXFRPP"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Banque</label><input type="text" id="c-banque" placeholder="Crédit Agricole…"></div>
+      <div class="form-group"><label>Modes de paiement acceptés</label><input type="text" id="c-paiements" value="Espèces, chèque, virement bancaire"></div>
+    </div>
 
-  <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;border-top:1px solid var(--beige-mid);padding-top:1.25rem;">
-    <button class="btn btn-primary" onclick="saveConfig()" style="padding:.65rem 2rem;font-size:14px;">Enregistrer et démarrer →</button>
+    <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;border-top:1px solid var(--beige-mid);padding-top:1.25rem;">
+      <button class="btn btn-primary" onclick="saveConfig()" style="padding:.65rem 2rem;font-size:14px;">Enregistrer et démarrer →</button>
+    </div>
   </div>
 </div>
-</div>
 
-<!-- APP -->
+<!-- ══════════════════════════════════════
+     APPLICATION PRINCIPALE
+══════════════════════════════════════ -->
 <header>
   <div class="logo-mark" id="hdr-initials">✦</div>
   <div class="logo-text">
@@ -259,542 +109,403 @@ main{flex:1;padding:1.5rem;max-width:900px;width:100%;margin:0 auto;}
     <div class="subtitle" id="hdr-sub">Gestion du cabinet</div>
   </div>
 </header>
+
 <nav>
-  <button class="nav-btn active" onclick="showPage('dashboard',this)">◆ Tableau de bord</button>
-  <button class="nav-btn" onclick="showPage('patients',this)">◈ Patients</button>
-  <button class="nav-btn" onclick="showPage('seances',this)">◷ Séances</button>
-  <button class="nav-btn" onclick="showPage('factures',this)">◻ Factures</button>
-  <button class="nav-btn" onclick="showPage('parametres',this)">⚙ Paramètres</button>
+  <button class="nav-btn active" onclick="showPage('dashboard', this)">◆ Tableau de bord</button>
+  <button class="nav-btn" onclick="showPage('patients', this)">◈ Patients</button>
+  <button class="nav-btn" onclick="showPage('seances', this)">◷ Séances</button>
+  <button class="nav-btn" onclick="showPage('factures', this)">◻ Factures</button>
+  <button class="nav-btn" onclick="showPage('parametres', this)">⚙ Paramètres</button>
 </nav>
+
 <main>
 
-<!-- DASHBOARD -->
-<div class="page active" id="page-dashboard">
-  <div class="page-header"><h1 class="page-title" id="dash-greeting">Tableau de bord</h1></div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-label">Patients actifs</div><div class="stat-value" id="st-p">0</div></div>
-    <div class="stat-card"><div class="stat-label">Séances ce mois</div><div class="stat-value" id="st-s">0</div></div>
-    <div class="stat-card"><div class="stat-label">À facturer</div><div class="stat-value" id="st-f">0</div></div>
-    <div class="stat-card"><div class="stat-label">CA ce mois</div><div class="stat-value" id="st-ca" style="font-size:22px;">0 €</div></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
-        <div style="font-family:var(--font-serif);font-size:17px;" id="cal-title">—</div>
-        <div style="display:flex;gap:4px;"><button class="btn btn-secondary btn-sm" onclick="calNav(-1)">‹</button><button class="btn btn-secondary btn-sm" onclick="calNav(1)">›</button></div>
+  <!-- ── DASHBOARD ── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <h1 class="page-title" id="dash-greeting">Tableau de bord</h1>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Patients actifs</div><div class="stat-value" id="st-p">0</div></div>
+      <div class="stat-card"><div class="stat-label">Séances ce mois</div><div class="stat-value" id="st-s">0</div></div>
+      <div class="stat-card"><div class="stat-label">À facturer</div><div class="stat-value" id="st-f">0</div></div>
+      <div class="stat-card"><div class="stat-label">CA ce mois</div><div class="stat-value" id="st-ca" style="font-size:22px;">0 €</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+          <div style="font-family:var(--font-serif);font-size:17px;" id="cal-title">—</div>
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-secondary btn-sm" onclick="calNav(-1)">‹</button>
+            <button class="btn btn-secondary btn-sm" onclick="calNav(1)">›</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendar"></div>
       </div>
-      <div class="calendar-grid" id="calendar"></div>
-    </div>
-    <div class="card" style="max-height:340px;overflow-y:auto;">
-      <div class="section-title">Prochaines séances</div>
-      <div id="upcoming-list"><div style="color:var(--warm-mid);font-size:13px;">Aucune séance planifiée</div></div>
+      <div class="card" style="max-height:340px;overflow-y:auto;">
+        <div class="section-title">Prochaines séances</div>
+        <div id="upcoming-list"><div style="color:var(--warm-mid);font-size:13px;">Aucune séance planifiée</div></div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- PATIENTS -->
-<div class="page" id="page-patients">
-  <div class="page-header"><h1 class="page-title">Patients</h1><button class="btn btn-primary" onclick="openModal('modal-patient')">+ Nouveau patient</button></div>
-  <div class="search-bar"><span class="search-icon">⌕</span><input type="text" placeholder="Rechercher…" id="search-patients" oninput="renderPatients()"></div>
-  <div class="card-grid" id="patients-list"></div>
-</div>
-
-<!-- SÉANCES -->
-<div class="page" id="page-seances">
-  <div class="page-header"><h1 class="page-title">Séances</h1><button class="btn btn-primary" onclick="openModal('modal-seance')">+ Nouvelle séance</button></div>
-  <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;">
-    <select id="filter-statut" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()">
-      <option value="">Tous les statuts</option><option value="planifié">Planifiées</option><option value="honoré">Honorées</option><option value="annulé">Annulées</option>
-    </select>
-    <select id="filter-pat" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()"><option value="">Tous les patients</option></select>
+  <!-- ── PATIENTS ── -->
+  <div class="page" id="page-patients">
+    <div class="page-header">
+      <h1 class="page-title">Patients</h1>
+      <button class="btn btn-primary" onclick="openModal('modal-patient')">+ Nouveau patient</button>
+    </div>
+    <div class="search-bar">
+      <span class="search-icon">⌕</span>
+      <input type="text" placeholder="Rechercher un patient…" id="search-patients" oninput="renderPatients()">
+    </div>
+    <div class="card-grid" id="patients-list"></div>
   </div>
-  <div id="seances-list"></div>
-</div>
 
-<!-- FACTURES -->
-<div class="page" id="page-factures">
-  <div class="page-header"><h1 class="page-title">Factures</h1><button class="btn btn-primary" onclick="openModal('modal-facture')">+ Nouvelle facture</button></div>
-  <div id="factures-list"></div>
-</div>
-
-<!-- PARAMÈTRES -->
-<div class="page" id="page-parametres">
-  <div class="page-header"><h1 class="page-title">Paramètres</h1></div>
-  <div class="info-box"><strong>⚑ Confidentialité :</strong> Toutes vos informations restent stockées uniquement sur cet appareil (localStorage). Aucune donnée ne transite par un serveur externe.</div>
-
-  <div class="settings-section"><div class="settings-section-title">Identité professionnelle</div>
-  <div class="card">
-    <div class="form-row"><div class="form-group"><label>Prénom</label><input type="text" id="s-prenom"></div><div class="form-group"><label>Nom</label><input type="text" id="s-nom"></div></div>
-    <div class="form-row"><div class="form-group"><label>Titre professionnel</label><input type="text" id="s-titre"></div><div class="form-group"><label>Formation</label><input type="text" id="s-formation"></div></div>
-  </div></div>
-
-  <div class="settings-section"><div class="settings-section-title">Coordonnées</div>
-  <div class="card">
-    <div class="form-group"><label>Adresse</label><input type="text" id="s-adresse"></div>
-    <div class="form-row"><div class="form-group"><label>Code postal</label><input type="text" id="s-cp"></div><div class="form-group"><label>Ville</label><input type="text" id="s-ville"></div></div>
-    <div class="form-row"><div class="form-group"><label>Téléphone</label><input type="tel" id="s-tel"></div><div class="form-group"><label>Email</label><input type="email" id="s-email"></div></div>
-  </div></div>
-
-  <div class="settings-section"><div class="settings-section-title">Informations légales &amp; facturation</div>
-  <div class="card">
-    <div class="form-row"><div class="form-group"><label>N° SIRET</label><input type="text" id="s-siret" maxlength="17"></div><div class="form-group"><label>N° TVA intracommunautaire</label><input type="text" id="s-tva-num"></div></div>
-    <div class="form-group"><label>Régime TVA</label>
-      <select id="s-tva-mention" onchange="toggleTvaCustom('s')">
-        <option value="Exonéré de TVA – Art. 261-4-1° du CGI (soins à la personne)">Exonéré TVA – Art. 261-4-1° CGI (soins à la personne)</option>
-        <option value="TVA non applicable – Art. 293 B du CGI (franchise en base)">TVA non applicable – Art. 293 B CGI (franchise en base)</option>
-        <option value="Assujetti à la TVA au taux de 20 %">Assujetti à la TVA 20 %</option>
-        <option value="custom">Autre (à préciser)</option>
+  <!-- ── SÉANCES ── -->
+  <div class="page" id="page-seances">
+    <div class="page-header">
+      <h1 class="page-title">Séances</h1>
+      <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Nouvelle séance</button>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+      <select id="filter-statut" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()">
+        <option value="">Tous les statuts</option>
+        <option value="planifié">Planifiées</option>
+        <option value="honoré">Honorées</option>
+        <option value="réglée">Réglées</option>
+        <option value="annulé">Annulées</option>
+      </select>
+      <select id="filter-pat" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()">
+        <option value="">Tous les patients</option>
       </select>
     </div>
-    <div class="form-group" id="s-tva-custom-group" style="display:none;"><label>Mention personnalisée</label><input type="text" id="s-tva-custom"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Tarif séance par défaut (€)</label><input type="number" id="s-tarif" min="0" step="5"></div>
-      <div class="form-group"><label>Délai paiement factures (jours)</label><input type="number" id="s-delai" min="0"></div>
-    </div>
-    <div class="form-group"><label>N° de facture suivant</label><input type="number" id="s-next-num" min="1"><div class="form-hint">La numérotation doit être continue et sans rupture (obligation légale française).</div></div>
-  </div></div>
-
-  <div class="settings-section"><div class="settings-section-title">Coordonnées bancaires</div>
-  <div class="card">
-    <div class="form-row"><div class="form-group"><label>IBAN</label><input type="text" id="s-iban"></div><div class="form-group"><label>BIC / SWIFT</label><input type="text" id="s-bic"></div></div>
-    <div class="form-row"><div class="form-group"><label>Banque</label><input type="text" id="s-banque"></div><div class="form-group"><label>Modes de paiement acceptés</label><input type="text" id="s-paiements"></div></div>
-  </div></div>
-
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-top:.5rem;">
-    <button class="btn btn-danger btn-sm" onclick="resetApp()">Réinitialiser toutes les données</button>
-    <button class="btn btn-primary" onclick="saveSettings()" style="padding:.65rem 2rem;">Enregistrer</button>
+    <div id="seances-list"></div>
   </div>
-</div>
+
+  <!-- ── FACTURES ── -->
+  <div class="page" id="page-factures">
+    <div class="page-header">
+      <h1 class="page-title">Factures</h1>
+      <button class="btn btn-primary" onclick="openModal('modal-facture')">+ Nouvelle facture</button>
+    </div>
+    <div id="factures-list"></div>
+  </div>
+
+  <!-- ── PARAMÈTRES ── -->
+  <div class="page" id="page-parametres">
+    <div class="page-header">
+      <h1 class="page-title">Paramètres</h1>
+    </div>
+
+    <div class="info-box terra">
+      <strong>⚑ Confidentialité :</strong> Toutes vos informations restent stockées uniquement sur cet appareil (localStorage). Aucune donnée ne transite par un serveur externe.
+    </div>
+
+    <!-- Export / Import -->
+    <div class="settings-section">
+      <div class="settings-section-title">Sauvegarde des données</div>
+      <div class="card">
+        <p style="font-size:13px;color:var(--warm-mid);margin-bottom:1rem;line-height:1.6;">Exportez toutes vos données (patients, séances, factures, paramètres) dans un fichier JSON pour les sauvegarder ou les transférer vers un autre appareil.</p>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="exportData()">⬇ Exporter les données</button>
+          <button class="btn btn-secondary" onclick="importData()">⬆ Importer des données</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Identité professionnelle</div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group"><label>Prénom</label><input type="text" id="s-prenom"></div>
+          <div class="form-group"><label>Nom</label><input type="text" id="s-nom"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Titre professionnel</label><input type="text" id="s-titre"></div>
+          <div class="form-group"><label>Formation</label><input type="text" id="s-formation"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Coordonnées du cabinet</div>
+      <div class="card">
+        <div class="form-group"><label>Adresse</label><input type="text" id="s-adresse"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Code postal</label><input type="text" id="s-cp"></div>
+          <div class="form-group"><label>Ville</label><input type="text" id="s-ville"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Téléphone</label><input type="tel" id="s-tel"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="s-email"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Informations légales &amp; facturation</div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group"><label>N° SIRET</label><input type="text" id="s-siret" maxlength="17"></div>
+          <div class="form-group"><label>N° TVA intracommunautaire</label><input type="text" id="s-tva-num"></div>
+        </div>
+        <div class="form-group">
+          <label>Régime TVA</label>
+          <select id="s-tva-mention" onchange="toggleTvaCustom('s')">
+            <option value="Exonéré de TVA – Art. 261-4-1° du CGI (soins à la personne)">Exonéré de TVA – Art. 261-4-1° CGI (soins à la personne) ← psychothérapeutes</option>
+            <option value="TVA non applicable – Art. 293 B du CGI (franchise en base)">TVA non applicable – Art. 293 B CGI (franchise en base)</option>
+            <option value="Assujetti à la TVA au taux de 20 %">Assujetti à la TVA 20 %</option>
+            <option value="custom">Autre (à préciser)</option>
+          </select>
+        </div>
+        <div class="form-group" id="s-tva-custom-group" style="display:none;">
+          <label>Mention personnalisée</label>
+          <input type="text" id="s-tva-custom">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tarif séance par défaut (€)</label>
+            <input type="number" id="s-tarif" min="0" step="5">
+          </div>
+          <div class="form-group">
+            <label>Délai paiement factures (jours)</label>
+            <input type="number" id="s-delai" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>N° de facture suivant</label>
+          <input type="number" id="s-next-num" min="1">
+          <div class="form-hint">La numérotation doit être continue et sans rupture (obligation légale française).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Coordonnées bancaires</div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group"><label>IBAN</label><input type="text" id="s-iban"></div>
+          <div class="form-group"><label>BIC / SWIFT</label><input type="text" id="s-bic"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Banque</label><input type="text" id="s-banque"></div>
+          <div class="form-group"><label>Modes de paiement acceptés</label><input type="text" id="s-paiements"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-top:.5rem;">
+      <button class="btn btn-danger btn-sm" onclick="resetApp()">Réinitialiser toutes les données</button>
+      <button class="btn btn-primary" onclick="saveSettings()" style="padding:.65rem 2rem;">Enregistrer les modifications</button>
+    </div>
+  </div>
 
 </main>
 
-<!-- MODALS -->
+<!-- ══════════════════════════════════════
+     MODALS
+══════════════════════════════════════ -->
 
-<!-- Patient -->
+<!-- ── Modal Patient ── -->
 <div class="modal-overlay hidden" id="modal-patient">
-<div class="modal">
-  <button class="modal-close" onclick="closeModal('modal-patient')">✕</button>
-  <h2 class="modal-title" id="mp-title">Nouveau patient</h2>
-  <input type="hidden" id="p-edit-id">
-  <div class="tab-group">
-    <button class="tab-btn active" onclick="showTab('tab-infos',this)">Informations</button>
-    <button class="tab-btn" onclick="showTab('tab-notes',this)">Notes thérapeutiques</button>
-  </div>
-  <div id="tab-infos">
-    <div class="form-row"><div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="p-prenom"></div><div class="form-group"><label>Nom <span class="req">*</span></label><input type="text" id="p-nom"></div></div>
-    <div class="form-row"><div class="form-group"><label>Date de naissance</label><input type="date" id="p-naissance"></div><div class="form-group"><label>Téléphone</label><input type="tel" id="p-tel"></div></div>
-    <div class="form-group"><label>Email</label><input type="email" id="p-email"></div>
-    <div class="form-group"><label>Adresse complète</label><input type="text" id="p-adresse"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Tarif séance (€)</label><input type="number" id="p-tarif" value="60" step="5" min="0"></div>
-      <div class="form-group"><label>Statut</label><select id="p-statut"><option value="actif">Actif</option><option value="inactif">Inactif</option><option value="suivi-terminé">Suivi terminé</option></select></div>
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-patient')">✕</button>
+    <h2 class="modal-title" id="mp-title">Nouveau patient</h2>
+    <input type="hidden" id="p-edit-id">
+
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="showTab('tab-infos', this)">Informations</button>
+      <button class="tab-btn" onclick="showTab('tab-notes', this)">Notes thérapeutiques</button>
     </div>
-    <div class="form-group"><label>Motif de consultation</label><input type="text" id="p-motif"></div>
+
+    <div id="tab-infos" data-tab>
+      <div class="form-row">
+        <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="p-prenom" placeholder="Prénom"></div>
+        <div class="form-group"><label>Nom <span class="req">*</span></label><input type="text" id="p-nom" placeholder="NOM"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Date de naissance</label><input type="date" id="p-naissance"></div>
+        <div class="form-group"><label>Téléphone</label><input type="tel" id="p-tel" placeholder="06 xx xx xx xx"></div>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="p-email" placeholder="email@exemple.fr"></div>
+      <div class="form-group"><label>Adresse complète</label><input type="text" id="p-adresse" placeholder="Rue, code postal, ville"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tarif séance (€)</label>
+          <input type="number" id="p-tarif" value="60" step="5" min="0">
+        </div>
+        <div class="form-group">
+          <label>Statut</label>
+          <select id="p-statut">
+            <option value="actif">Actif</option>
+            <option value="inactif">Inactif</option>
+            <option value="suivi-terminé">Suivi terminé</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Motif de consultation</label><input type="text" id="p-motif" placeholder="Ex : anxiété, relations, deuil…"></div>
+    </div>
+
+    <div id="tab-notes" data-tab style="display:none;">
+      <div class="form-group">
+        <label>Notes confidentielles</label>
+        <textarea id="p-notes" rows="8" placeholder="Notes de suivi thérapeutique…&#10;(strictement confidentielles)"></textarea>
+      </div>
+      <div class="info-box terra" style="font-size:11px;">⚑ Notes stockées uniquement sur cet appareil.</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-patient')">Annuler</button>
+      <button class="btn btn-primary" onclick="savePatient()">Enregistrer</button>
+    </div>
   </div>
-  <div id="tab-notes" style="display:none;">
-    <div class="form-group"><label>Notes confidentielles</label><textarea id="p-notes" rows="8" placeholder="Notes de suivi thérapeutique…&#10;(strictement confidentielles)"></textarea></div>
-    <div style="font-size:11px;color:var(--warm-mid);padding:.5rem;background:var(--terra-pale);border-radius:var(--radius-sm);border:1px solid rgba(201,149,106,.3);">⚑ Notes stockées uniquement sur cet appareil.</div>
-  </div>
-  <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('modal-patient')">Annuler</button><button class="btn btn-primary" onclick="savePatient()">Enregistrer</button></div>
-</div>
 </div>
 
-<!-- Séance -->
+<!-- ── Modal Séance ── -->
 <div class="modal-overlay hidden" id="modal-seance">
-<div class="modal">
-  <button class="modal-close" onclick="closeModal('modal-seance')">✕</button>
-  <h2 class="modal-title" id="ms-title">Nouvelle séance</h2>
-  <input type="hidden" id="s-edit-id">
-  <div class="form-group"><label>Patient <span class="req">*</span></label><select id="s-patient"></select></div>
-  <div class="form-row"><div class="form-group"><label>Date <span class="req">*</span></label><input type="date" id="s-date"></div><div class="form-group"><label>Heure <span class="req">*</span></label><input type="time" id="s-heure" value="10:00"></div></div>
-  <div class="form-row">
-    <div class="form-group"><label>Durée (min)</label><select id="s-duree"><option value="45">45 min</option><option value="50">50 min</option><option value="60" selected>60 min</option><option value="75">75 min</option><option value="90">90 min</option></select></div>
-    <div class="form-group"><label>Tarif (€)</label><input type="number" id="s-tarif" value="60" step="5" min="0"></div>
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-seance')">✕</button>
+    <h2 class="modal-title" id="ms-title">Nouvelle séance</h2>
+    <input type="hidden" id="s-edit-id">
+    <input type="hidden" id="s-return-patient">
+
+    <div class="form-group"><label>Patient <span class="req">*</span></label><select id="s-patient"></select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Date <span class="req">*</span></label><input type="date" id="s-date" onchange="updateRecurrencePreview()"></div>
+      <div class="form-group"><label>Heure <span class="req">*</span></label><input type="time" id="s-heure" value="10:00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Durée</label>
+        <select id="s-duree">
+          <option value="45">45 min</option>
+          <option value="50">50 min</option>
+          <option value="60" selected>60 min</option>
+          <option value="75">75 min</option>
+          <option value="90">90 min</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Tarif (€)</label><input type="number" id="s-tarif" value="60" step="5" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Statut</label>
+        <select id="s-statut">
+          <option value="planifié">Planifiée</option>
+          <option value="honoré">Honorée</option>
+          <option value="réglée">Réglée</option>
+          <option value="annulé">Annulée</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mode de paiement</label>
+        <select id="s-paiement">
+          <option value="">— non défini —</option>
+          <option value="Espèces">Espèces</option>
+          <option value="Chèque">Chèque</option>
+          <option value="Virement">Virement</option>
+          <option value="Carte bancaire">Carte bancaire</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Notes de séance</label><textarea id="s-notes" rows="2" placeholder="Observations…"></textarea></div>
+
+    <!-- Planification récurrente -->
+    <div style="margin-top:.25rem;">
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;color:var(--warm-mid);">
+        <input type="checkbox" id="s-recurrence" onchange="toggleRecurrence()" style="width:auto;accent-color:var(--sage);">
+        Planifier plusieurs séances à l'avance
+      </label>
+    </div>
+
+    <div id="recurrence-box" class="recurrence-box" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Répéter tous les (jours)</label>
+          <input type="number" id="s-rec-freq" value="7" min="1" max="365" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+          <div class="form-hint">7 = hebdomadaire · 14 = bimensuel · 30 = mensuel</div>
+        </div>
+        <div class="form-group">
+          <label>Nombre de séances total</label>
+          <input type="number" id="s-rec-count" value="4" min="1" max="52" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+        </div>
+      </div>
+      <div class="recurrence-preview" id="rec-preview"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-seance')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveSeance()">Enregistrer</button>
+    </div>
   </div>
-  <div class="form-row">
-    <div class="form-group"><label>Statut</label><select id="s-statut"><option value="planifié">Planifiée</option><option value="honoré">Honorée</option><option value="annulé">Annulée</option></select></div>
-    <div class="form-group"><label>Mode de paiement</label><select id="s-paiement"><option value="">— non défini —</option><option value="Espèces">Espèces</option><option value="Chèque">Chèque</option><option value="Virement">Virement</option><option value="Carte bancaire">Carte bancaire</option></select></div>
+</div>
+
+<!-- ── Modal Fiche Patient ── -->
+<div class="modal-overlay hidden" id="modal-fiche">
+  <div class="modal" style="max-width:600px;">
+    <button class="modal-close" onclick="closeModal('modal-fiche')">✕</button>
+    <div id="fiche-content"></div>
   </div>
-  <div class="form-group"><label>Notes de séance</label><textarea id="s-notes" rows="3"></textarea></div>
-  <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('modal-seance')">Annuler</button><button class="btn btn-primary" onclick="saveSeance()">Enregistrer</button></div>
-</div>
 </div>
 
-<!-- Fiche patient -->
-<div class="modal-overlay hidden" id="modal-fiche"><div class="modal" style="max-width:580px;"><button class="modal-close" onclick="closeModal('modal-fiche')">✕</button><div id="fiche-content"></div></div></div>
+<!-- ── Modal Vue Séance ── -->
+<div class="modal-overlay hidden" id="modal-seance-view">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-seance-view')">✕</button>
+    <div id="seance-view-content"></div>
+  </div>
+</div>
 
-<!-- Vue séance -->
-<div class="modal-overlay hidden" id="modal-seance-view"><div class="modal"><button class="modal-close" onclick="closeModal('modal-seance-view')">✕</button><div id="seance-view-content"></div></div></div>
-
-<!-- Génération facture -->
+<!-- ── Modal Génération Facture ── -->
 <div class="modal-overlay hidden" id="modal-facture">
-<div class="modal">
-  <button class="modal-close" onclick="closeModal('modal-facture')">✕</button>
-  <h2 class="modal-title">Nouvelle facture</h2>
-  <div id="cfg-warn" class="info-box" style="display:none;"><strong>⚠</strong> SIRET ou adresse manquant. <a href="#" onclick="closeModal('modal-facture');showPage('parametres',document.querySelectorAll('.nav-btn')[4])" style="color:var(--sage-dark);">Compléter →</a></div>
-  <div class="form-group"><label>Patient <span class="req">*</span></label><select id="f-patient" onchange="populateFactureSeances()"></select></div>
-  <div class="form-group"><label>Séances à inclure <span class="req">*</span></label>
-    <div id="f-seances-select" style="border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);padding:.5rem;max-height:200px;overflow-y:auto;"><div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d'abord</div></div>
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-facture')">✕</button>
+    <h2 class="modal-title">Nouvelle facture</h2>
+
+    <div id="cfg-warn" class="info-box terra" style="display:none;">
+      <strong>⚠</strong> SIRET ou adresse manquant.
+      <a href="#" onclick="closeModal('modal-facture');showPage('parametres',document.querySelectorAll('.nav-btn')[4])" style="color:var(--sage-dark);">Compléter les paramètres →</a>
+    </div>
+
+    <div class="form-group"><label>Patient <span class="req">*</span></label><select id="f-patient" onchange="populateFactureSeances()"></select></div>
+    <div class="form-group">
+      <label>Séances à inclure <span class="req">*</span></label>
+      <div id="f-seances-select" style="border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);padding:.5rem;max-height:220px;overflow-y:auto;background:var(--white);">
+        <div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d'abord</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Date d'émission <span class="req">*</span></label><input type="date" id="f-date"></div>
+      <div class="form-group"><label>Date d'échéance <span class="req">*</span></label><input type="date" id="f-echeance"></div>
+    </div>
+    <div class="form-group"><label>Objet de la facture</label><input type="text" id="f-objet" value="Séances de psychothérapie"></div>
+    <div style="padding:.75rem 1rem;background:var(--sage-pale);border-radius:var(--radius-sm);font-size:13px;color:var(--sage-dark);margin-bottom:.5rem;">
+      Total : <strong id="f-total-preview">0,00 €</strong>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-facture')">Annuler</button>
+      <button class="btn btn-primary" onclick="genererFacture()">Générer la facture</button>
+    </div>
   </div>
-  <div class="form-row"><div class="form-group"><label>Date d'émission <span class="req">*</span></label><input type="date" id="f-date"></div><div class="form-group"><label>Date d'échéance <span class="req">*</span></label><input type="date" id="f-echeance"></div></div>
-  <div class="form-group"><label>Objet de la facture</label><input type="text" id="f-objet" value="Séances de psychothérapie"></div>
-  <div style="padding:.75rem 1rem;background:var(--sage-pale);border-radius:var(--radius-sm);font-size:13px;color:var(--sage-dark);margin-bottom:.5rem;">Total : <strong id="f-total-preview">0,00 €</strong></div>
-  <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('modal-facture')">Annuler</button><button class="btn btn-primary" onclick="genererFacture()">Générer la facture</button></div>
-</div>
 </div>
 
-<!-- Aperçu facture -->
+<!-- ── Modal Aperçu Facture ── -->
 <div class="modal-overlay hidden" id="modal-facture-view">
-<div class="modal" style="max-width:700px;">
-  <button class="modal-close" onclick="closeModal('modal-facture-view')">✕</button>
-  <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;" id="no-print">
-    <button class="btn btn-primary" onclick="printFacture()">🖨 Imprimer / PDF</button>
-    <button class="btn btn-secondary" onclick="closeModal('modal-facture-view')">Fermer</button>
+  <div class="modal" style="max-width:700px;">
+    <button class="modal-close" onclick="closeModal('modal-facture-view')">✕</button>
+    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;" id="no-print">
+      <button class="btn btn-primary" onclick="printFacture()">🖨 Imprimer / PDF</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-facture-view')">Fermer</button>
+    </div>
+    <div id="facture-view-content"></div>
   </div>
-  <div id="facture-view-content"></div>
-</div>
 </div>
 
+<!-- ── Toast ── -->
 <div class="toast hidden" id="toast"></div>
 
-<script>
-// ── DATA ──
-let DB={patients:[],seances:[],factures:[],nextNum:1};
-let CFG={prenom:'',nom:'',titre:'',formation:'',adresse:'',cp:'',ville:'',tel:'',email:'',siret:'',tvaNum:'',tvaMention:'',tarif:60,delai:30,iban:'',bic:'',banque:'',paiements:'Espèces, chèque, virement bancaire'};
-
-function load(){
-  try{const d=localStorage.getItem('psy-db');if(d)DB=JSON.parse(d);}catch(e){}
-  try{const c=localStorage.getItem('psy-cfg');if(c)CFG={...CFG,...JSON.parse(c)};}catch(e){}
-}
-function save(){try{localStorage.setItem('psy-db',JSON.stringify(DB));}catch(e){}}
-function saveCFG(){try{localStorage.setItem('psy-cfg',JSON.stringify(CFG));}catch(e){}}
-function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function formatDate(d){if(!d)return'—';const[y,m,j]=d.split('-');const mn=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];return parseInt(j)+' '+mn[parseInt(m)-1]+' '+y;}
-function fmtMoney(n){return n.toFixed(2).replace('.',',')+' €';}
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),2800);}
-
-// ── CONFIG ──
-function toggleTvaCustom(pfx){
-  const v=document.getElementById(pfx+'-tva-mention').value;
-  document.getElementById(pfx+'-tva-custom-group').style.display=v==='custom'?'block':'none';
-}
-
-function getTvaMention(pfx){
-  const v=document.getElementById(pfx+'-tva-mention').value;
-  return v==='custom'?(document.getElementById(pfx+'-tva-custom').value.trim()||''):v;
-}
-
-function isConfigured(){return CFG.prenom&&CFG.nom&&CFG.siret;}
-
-function saveConfig(){
-  const prenom=document.getElementById('c-prenom').value.trim();
-  const nom=document.getElementById('c-nom').value.trim();
-  const siret=document.getElementById('c-siret').value.trim();
-  if(!prenom||!nom){alert('Prénom et nom sont obligatoires.');return;}
-  if(!siret){alert('Le SIRET est obligatoire pour émettre des factures.');return;}
-  CFG={prenom,nom,titre:document.getElementById('c-titre').value.trim(),formation:document.getElementById('c-formation').value.trim(),adresse:document.getElementById('c-adresse').value.trim(),cp:document.getElementById('c-cp').value.trim(),ville:document.getElementById('c-ville').value.trim(),tel:document.getElementById('c-tel').value.trim(),email:document.getElementById('c-email').value.trim(),siret,tvaNum:document.getElementById('c-tva-num').value.trim(),tvaMention:getTvaMention('c'),tarif:parseFloat(document.getElementById('c-tarif').value)||60,delai:parseInt(document.getElementById('c-delai').value)||30,iban:document.getElementById('c-iban').value.trim(),bic:document.getElementById('c-bic').value.trim(),banque:document.getElementById('c-banque').value.trim(),paiements:document.getElementById('c-paiements').value.trim()};
-  saveCFG();
-  document.getElementById('setup-screen').classList.add('hidden');
-  updateHeader();toast('Configuration enregistrée ✓');renderDashboard();
-}
-
-function saveSettings(){
-  const mention=getTvaMention('s');
-  CFG={...CFG,prenom:document.getElementById('s-prenom').value.trim(),nom:document.getElementById('s-nom').value.trim(),titre:document.getElementById('s-titre').value.trim(),formation:document.getElementById('s-formation').value.trim(),adresse:document.getElementById('s-adresse').value.trim(),cp:document.getElementById('s-cp').value.trim(),ville:document.getElementById('s-ville').value.trim(),tel:document.getElementById('s-tel').value.trim(),email:document.getElementById('s-email').value.trim(),siret:document.getElementById('s-siret').value.trim(),tvaNum:document.getElementById('s-tva-num').value.trim(),tvaMention:mention,tarif:parseFloat(document.getElementById('s-tarif').value)||60,delai:parseInt(document.getElementById('s-delai').value)||30,iban:document.getElementById('s-iban').value.trim(),bic:document.getElementById('s-bic').value.trim(),banque:document.getElementById('s-banque').value.trim(),paiements:document.getElementById('s-paiements').value.trim()};
-  const nn=parseInt(document.getElementById('s-next-num').value);if(nn>0)DB.nextNum=nn;
-  saveCFG();save();updateHeader();toast('Paramètres enregistrés ✓');
-}
-
-function loadSettingsForm(){
-  const fields={prenom:'s-prenom',nom:'s-nom',titre:'s-titre',formation:'s-formation',adresse:'s-adresse',cp:'s-cp',ville:'s-ville',tel:'s-tel',email:'s-email',siret:'s-siret',tvaNum:'s-tva-num',iban:'s-iban',bic:'s-bic',banque:'s-banque',paiements:'s-paiements'};
-  Object.entries(fields).forEach(([k,id])=>{const el=document.getElementById(id);if(el)el.value=CFG[k]||'';});
-  document.getElementById('s-tarif').value=CFG.tarif;
-  document.getElementById('s-delai').value=CFG.delai||30;
-  document.getElementById('s-next-num').value=DB.nextNum;
-  const sel=document.getElementById('s-tva-mention');
-  const knownValues=Array.from(sel.options).map(o=>o.value);
-  if(knownValues.includes(CFG.tvaMention)){sel.value=CFG.tvaMention;}
-  else if(CFG.tvaMention){sel.value='custom';document.getElementById('s-tva-custom').value=CFG.tvaMention;document.getElementById('s-tva-custom-group').style.display='block';}
-}
-
-function updateHeader(){
-  if(!CFG.prenom)return;
-  const ini=(CFG.prenom[0]+(CFG.nom[0]||'')).toUpperCase();
-  document.getElementById('hdr-initials').textContent=ini;
-  document.getElementById('hdr-name').textContent=CFG.prenom+' '+CFG.nom.toUpperCase();
-  document.getElementById('hdr-sub').textContent=CFG.titre||'Cabinet de Psychothérapie';
-  document.getElementById('dash-greeting').textContent='Bonjour, '+CFG.prenom;
-  document.title='Cabinet '+CFG.prenom+' '+CFG.nom;
-}
-
-function resetApp(){if(!confirm('Supprimer TOUTES les données ? Cette action est irréversible.'))return;localStorage.removeItem('psy-db');localStorage.removeItem('psy-cfg');location.reload();}
-
-// ── NAV ──
-function showPage(id,btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');btn.classList.add('active');
-  if(id==='dashboard')renderDashboard();
-  if(id==='patients')renderPatients();
-  if(id==='seances'){populateFilterPat();renderSeances();}
-  if(id==='factures')renderFactures();
-  if(id==='parametres')loadSettingsForm();
-}
-function openModal(id){
-  document.getElementById(id).classList.remove('hidden');
-  if(id==='modal-patient')resetPatientForm();
-  if(id==='modal-seance')resetSeanceForm();
-  if(id==='modal-facture')initFactureModal();
-}
-function closeModal(id){document.getElementById(id).classList.add('hidden');}
-function showTab(tabId,btn){
-  document.querySelectorAll('#modal-patient [id^="tab-"]').forEach(t=>t.style.display='none');
-  document.getElementById(tabId).style.display='block';
-  document.querySelectorAll('#modal-patient .tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
-}
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.add('hidden');}));
-
-// ── PATIENTS ──
-function resetPatientForm(){
-  document.getElementById('p-edit-id').value='';
-  document.getElementById('mp-title').textContent='Nouveau patient';
-  ['p-prenom','p-nom','p-tel','p-email','p-adresse','p-motif','p-notes'].forEach(f=>document.getElementById(f).value='');
-  document.getElementById('p-tarif').value=CFG.tarif||60;
-  document.getElementById('p-statut').value='actif';
-  document.getElementById('p-naissance').value='';
-  showTab('tab-infos',document.querySelector('#modal-patient .tab-btn'));
-}
-function savePatient(){
-  const prenom=document.getElementById('p-prenom').value.trim();
-  const nom=document.getElementById('p-nom').value.trim();
-  if(!prenom||!nom){alert('Prénom et nom requis.');return;}
-  const id=document.getElementById('p-edit-id').value;
-  const data={prenom,nom,naissance:document.getElementById('p-naissance').value,tel:document.getElementById('p-tel').value.trim(),email:document.getElementById('p-email').value.trim(),adresse:document.getElementById('p-adresse').value.trim(),tarif:parseFloat(document.getElementById('p-tarif').value)||CFG.tarif||60,statut:document.getElementById('p-statut').value,motif:document.getElementById('p-motif').value.trim(),notes:document.getElementById('p-notes').value.trim()};
-  if(id){const idx=DB.patients.findIndex(p=>p.id===id);if(idx>-1){data.id=id;data.createdAt=DB.patients[idx].createdAt;DB.patients[idx]=data;}}
-  else{data.id=uid();data.createdAt=new Date().toISOString();DB.patients.push(data);}
-  save();closeModal('modal-patient');renderPatients();toast('Patient enregistré ✓');
-}
-function editPatient(id){
-  const p=DB.patients.find(p=>p.id===id);if(!p)return;
-  openModal('modal-patient');
-  document.getElementById('p-edit-id').value=id;
-  document.getElementById('mp-title').textContent='Modifier le patient';
-  ['prenom','nom','tel','email','adresse','motif','notes'].forEach(k=>{const el=document.getElementById('p-'+k);if(el)el.value=p[k]||'';});
-  document.getElementById('p-naissance').value=p.naissance||'';
-  document.getElementById('p-tarif').value=p.tarif;
-  document.getElementById('p-statut').value=p.statut;
-}
-function deletePatient(id){if(!confirm('Supprimer ce patient ?'))return;DB.patients=DB.patients.filter(p=>p.id!==id);save();renderPatients();toast('Patient supprimé');}
-function viewPatient(id){
-  const p=DB.patients.find(p=>p.id===id);if(!p)return;
-  const seances=DB.seances.filter(s=>s.patientId===id).sort((a,b)=>b.date.localeCompare(a.date));
-  const ini=(p.prenom[0]+p.nom[0]).toUpperCase();
-  const age=p.naissance?Math.floor((Date.now()-new Date(p.naissance))/31557600000)+' ans':'';
-  const sl=seances.length===0?'<div style="color:var(--warm-mid);font-size:13px;">Aucune séance</div>':seances.map(s=>`<div class="seance-line"><span style="color:var(--warm-mid);min-width:90px;">${formatDate(s.date)}</span><span style="color:var(--warm-mid);min-width:50px;">${s.heure}</span><span class="badge badge-${s.statut}">${s.statut}</span><span style="margin-left:auto;font-family:var(--font-serif);font-size:15px;">${s.tarif} €</span></div>`).join('');
-  document.getElementById('fiche-content').innerHTML=`<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;"><div class="avatar" style="width:56px;height:56px;font-size:20px;">${ini}</div><div><div style="font-family:var(--font-serif);font-size:22px;">${p.prenom} ${p.nom.toUpperCase()}</div><div style="font-size:12px;color:var(--warm-mid);">${age}${p.motif?' · '+p.motif:''}</div></div><div style="margin-left:auto;display:flex;gap:.5rem;"><button class="btn btn-secondary btn-sm" onclick="closeModal('modal-fiche');editPatient('${id}')">Modifier</button><button class="btn btn-danger btn-sm" onclick="closeModal('modal-fiche');deletePatient('${id}')">Supprimer</button></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem;font-size:13px;">${p.tel?`<div><span style="color:var(--warm-mid);">Tél :</span> ${p.tel}</div>`:''}${p.email?`<div><span style="color:var(--warm-mid);">Email :</span> ${p.email}</div>`:''}${p.adresse?`<div style="grid-column:1/-1"><span style="color:var(--warm-mid);">Adresse :</span> ${p.adresse}</div>`:''}<div><span style="color:var(--warm-mid);">Tarif :</span> ${p.tarif} €</div><div><span style="color:var(--warm-mid);">Statut :</span> <span class="badge badge-${p.statut==='actif'?'honoré':'annulé'}">${p.statut}</span></div></div>${p.notes?`<div class="section-title">Notes thérapeutiques</div><div class="notes-block">${p.notes}</div><div style="margin-bottom:1.25rem;"></div>`:''}<div class="section-title">Séances (${seances.length})</div><div>${sl}</div>`;
-  document.getElementById('modal-fiche').classList.remove('hidden');
-}
-function renderPatients(){
-  const q=document.getElementById('search-patients').value.toLowerCase();
-  const list=document.getElementById('patients-list');
-  const filtered=DB.patients.filter(p=>(p.prenom+' '+p.nom).toLowerCase().includes(q)||(p.motif||'').toLowerCase().includes(q));
-  if(filtered.length===0){list.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="ei">◈</div><p>${DB.patients.length===0?'Aucun patient enregistré':'Aucun résultat'}</p>${DB.patients.length===0?'<button class="btn btn-primary" onclick="openModal(\'modal-patient\')">+ Ajouter</button>':''}</div>`;return;}
-  list.innerHTML=filtered.map(p=>{const ini=(p.prenom[0]+p.nom[0]).toUpperCase();const nb=DB.seances.filter(s=>s.patientId===p.id&&s.statut==='honoré').length;return`<div class="patient-card" onclick="viewPatient('${p.id}')"><div class="avatar">${ini}</div><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:500;">${p.prenom} ${p.nom.toUpperCase()}</div><div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${p.motif||'Motif non précisé'} · ${nb} séance${nb>1?'s':''}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><span class="badge badge-${p.statut==='actif'?'honoré':'annulé'}" style="font-size:10px;">${p.statut}</span><span style="font-family:var(--font-serif);font-size:16px;">${p.tarif} €</span></div></div>`;}).join('');
-}
-
-// ── SÉANCES ──
-function resetSeanceForm(){
-  document.getElementById('s-edit-id').value='';
-  document.getElementById('ms-title').textContent='Nouvelle séance';
-  populateSelectPat('s-patient');
-  document.getElementById('s-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('s-heure').value='10:00';
-  document.getElementById('s-duree').value='60';
-  document.getElementById('s-tarif').value=CFG.tarif||60;
-  document.getElementById('s-statut').value='planifié';
-  document.getElementById('s-paiement').value='';
-  document.getElementById('s-notes').value='';
-}
-document.getElementById('s-patient').addEventListener('change',function(){const p=DB.patients.find(p=>p.id===this.value);if(p)document.getElementById('s-tarif').value=p.tarif;});
-function saveSeance(){
-  const patientId=document.getElementById('s-patient').value;const date=document.getElementById('s-date').value;const heure=document.getElementById('s-heure').value;
-  if(!patientId||!date||!heure){alert('Patient, date et heure requis.');return;}
-  const id=document.getElementById('s-edit-id').value;
-  const data={patientId,date,heure,duree:parseInt(document.getElementById('s-duree').value),tarif:parseFloat(document.getElementById('s-tarif').value)||60,statut:document.getElementById('s-statut').value,paiement:document.getElementById('s-paiement').value,notes:document.getElementById('s-notes').value.trim()};
-  if(id){const idx=DB.seances.findIndex(s=>s.id===id);if(idx>-1){data.id=id;data.facture=DB.seances[idx].facture;DB.seances[idx]=data;}}
-  else{data.id=uid();data.facture=null;DB.seances.push(data);}
-  save();closeModal('modal-seance');renderSeances();renderDashboard();toast('Séance enregistrée ✓');
-}
-function editSeance(id){
-  const s=DB.seances.find(s=>s.id===id);if(!s)return;
-  closeModal('modal-seance-view');openModal('modal-seance');
-  setTimeout(()=>{document.getElementById('s-edit-id').value=id;document.getElementById('ms-title').textContent='Modifier la séance';document.getElementById('s-patient').value=s.patientId;document.getElementById('s-date').value=s.date;document.getElementById('s-heure').value=s.heure;document.getElementById('s-duree').value=s.duree;document.getElementById('s-tarif').value=s.tarif;document.getElementById('s-statut').value=s.statut;document.getElementById('s-paiement').value=s.paiement||'';document.getElementById('s-notes').value=s.notes||'';},50);
-}
-function deleteSeance(id){if(!confirm('Supprimer cette séance ?'))return;DB.seances=DB.seances.filter(s=>s.id!==id);save();closeModal('modal-seance-view');renderSeances();renderDashboard();toast('Séance supprimée');}
-function marquerHonore(id){const s=DB.seances.find(s=>s.id===id);if(s){s.statut='honoré';save();closeModal('modal-seance-view');renderSeances();renderDashboard();toast('Séance honorée ✓');}}
-function viewSeance(id){
-  const s=DB.seances.find(s=>s.id===id);if(!s)return;
-  const p=DB.patients.find(p=>p.id===s.patientId);const pn=p?p.prenom+' '+p.nom.toUpperCase():'Inconnu';
-  document.getElementById('seance-view-content').innerHTML=`<h2 class="modal-title">Séance du ${formatDate(s.date)}</h2><div style="display:grid;gap:.75rem;font-size:14px;margin-bottom:1.5rem;"><div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:100px;">Patient</span><strong>${pn}</strong></div><div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:100px;">Date & Heure</span><span>${formatDate(s.date)} à ${s.heure}</span></div><div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:100px;">Durée</span><span>${s.duree} min</span></div><div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:100px;">Tarif</span><span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span></div><div style="display:flex;gap:.75rem;align-items:center;"><span style="color:var(--warm-mid);min-width:100px;">Statut</span><span class="badge badge-${s.statut}">${s.statut}</span></div>${s.paiement?`<div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:100px;">Paiement</span><span>${s.paiement}</span></div>`:''}${s.facture?`<div style="display:flex;gap:.75rem;align-items:center;"><span style="color:var(--warm-mid);min-width:100px;">Facture</span><span class="badge badge-honoré">Facturée</span></div>`:''}</div>${s.notes?`<div class="section-title">Notes</div><div class="notes-block">${s.notes}</div><div style="margin-bottom:1rem;"></div>`:''}<div style="display:flex;gap:.75rem;flex-wrap:wrap;"><button class="btn btn-secondary" onclick="editSeance('${id}')">Modifier</button>${s.statut==='planifié'?`<button class="btn btn-primary" onclick="marquerHonore('${id}')">✓ Honorée</button>`:''}<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteSeance('${id}')">Supprimer</button></div>`;
-  document.getElementById('modal-seance-view').classList.remove('hidden');
-}
-function populateSelectPat(selId){const sel=document.getElementById(selId);sel.innerHTML='<option value="">— Sélectionner —</option>'+DB.patients.map(p=>`<option value="${p.id}">${p.prenom} ${p.nom.toUpperCase()}</option>`).join('');}
-function populateFilterPat(){const sel=document.getElementById('filter-pat');sel.innerHTML='<option value="">Tous les patients</option>'+DB.patients.map(p=>`<option value="${p.id}">${p.prenom} ${p.nom.toUpperCase()}</option>`).join('');}
-function renderSeances(){
-  const st=document.getElementById('filter-statut').value;const pid=document.getElementById('filter-pat').value;
-  let list=[...DB.seances].sort((a,b)=>b.date.localeCompare(a.date)||b.heure.localeCompare(a.heure));
-  if(st)list=list.filter(s=>s.statut===st);if(pid)list=list.filter(s=>s.patientId===pid);
-  const el=document.getElementById('seances-list');
-  if(list.length===0){el.innerHTML=`<div class="empty-state"><div class="ei">◷</div><p>Aucune séance correspondante</p><button class="btn btn-primary" onclick="openModal('modal-seance')">+ Ajouter</button></div>`;return;}
-  el.innerHTML=list.map(s=>{const p=DB.patients.find(p=>p.id===s.patientId);const pn=p?p.prenom+' '+p.nom.toUpperCase():'—';const d=s.date.split('-');const mo=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][parseInt(d[1])-1];return`<div class="rdv-item" onclick="viewSeance('${s.id}')"><div class="rdv-date"><div class="day">${d[2]}</div><div class="month">${mo}</div></div><div style="flex:1;"><div style="font-size:14px;font-weight:500;">${pn}</div><div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${s.heure} · ${s.duree} min${s.paiement?' · '+s.paiement:''}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="badge badge-${s.statut}">${s.statut}</span><span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span></div></div>`;}).join('');
-}
-
-// ── FACTURES — CONFORMITÉ 2026-2027 ──
-function initFactureModal(){
-  populateSelectPat('f-patient');
-  const today=new Date();document.getElementById('f-date').value=today.toISOString().split('T')[0];
-  const ech=new Date(today);ech.setDate(ech.getDate()+(CFG.delai||30));document.getElementById('f-echeance').value=ech.toISOString().split('T')[0];
-  document.getElementById('f-objet').value='Séances de psychothérapie';
-  document.getElementById('f-total-preview').textContent='0,00 €';
-  document.getElementById('f-seances-select').innerHTML='<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d\'abord</div>';
-  document.getElementById('cfg-warn').style.display=(!CFG.siret||!CFG.adresse)?'block':'none';
-}
-function populateFactureSeances(){
-  const pId=document.getElementById('f-patient').value;const c=document.getElementById('f-seances-select');
-  if(!pId){c.innerHTML='<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d\'abord</div>';document.getElementById('f-total-preview').textContent='0,00 €';return;}
-  const seances=DB.seances.filter(s=>s.patientId===pId&&s.statut==='honoré'&&!s.facture);
-  if(seances.length===0){c.innerHTML='<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Aucune séance honorée non facturée</div>';document.getElementById('f-total-preview').textContent='0,00 €';return;}
-  c.innerHTML=seances.map(s=>`<label style="display:flex;align-items:center;gap:.75rem;padding:.5rem;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--beige)'" onmouseout="this.style.background=''"><input type="checkbox" class="f-cb" value="${s.id}" data-tarif="${s.tarif}" onchange="updateFTotal()" style="width:auto;accent-color:var(--sage);"><span style="flex:1;font-size:13px;">${formatDate(s.date)} à ${s.heure} — ${s.duree} min</span><span style="font-family:var(--font-serif);font-size:15px;">${s.tarif} €</span></label>`).join('');
-  updateFTotal();
-}
-function updateFTotal(){const cbs=document.querySelectorAll('.f-cb:checked');const t=Array.from(cbs).reduce((a,cb)=>a+parseFloat(cb.dataset.tarif),0);document.getElementById('f-total-preview').textContent=fmtMoney(t);}
-function genererFacture(){
-  const pId=document.getElementById('f-patient').value;const cbs=document.querySelectorAll('.f-cb:checked');
-  if(!pId||cbs.length===0){alert('Sélectionnez un patient et au moins une séance.');return;}
-  if(!CFG.siret){alert('Votre SIRET est requis. Complétez vos paramètres.');return;}
-  const yr=new Date().getFullYear();
-  const num=yr+'-'+String(DB.nextNum).padStart(4,'0');DB.nextNum++;
-  const ids=Array.from(cbs).map(cb=>cb.value);
-  const seances=ids.map(id=>DB.seances.find(s=>s.id===id));
-  const total=seances.reduce((a,s)=>a+s.tarif,0);
-  const f={id:uid(),num,patientId:pId,seancesIds:ids,date:document.getElementById('f-date').value,echeance:document.getElementById('f-echeance').value,objet:document.getElementById('f-objet').value,total,createdAt:new Date().toISOString()};
-  DB.factures.push(f);ids.forEach(id=>{const s=DB.seances.find(s=>s.id===id);if(s)s.facture=f.id;});
-  save();closeModal('modal-facture');renderFactures();toast('Facture '+num+' générée ✓');setTimeout(()=>viewFacture(f.id),300);
-}
-
-function buildInvoice(f){
-  const p=DB.patients.find(p=>p.id===f.patientId);
-  const seances=f.seancesIds.map(sid=>DB.seances.find(s=>s.id===sid)).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date));
-  const pName=p?p.prenom+' '+p.nom.toUpperCase():'—';
-  const isTVA=CFG.tvaMention&&!CFG.tvaMention.startsWith('Exonéré')&&!CFG.tvaMention.startsWith('TVA non applicable');
-  const ht=isTVA?(f.total/1.20):f.total;const tva=isTVA?(f.total-f.total/1.20):0;
-  const adresseBlock=[CFG.adresse,CFG.cp&&CFG.ville?CFG.cp+' '+CFG.ville:''].filter(Boolean).join('<br>');
-  const lignes=seances.map(s=>`<tr><td>${formatDate(s.date)}</td><td>${f.objet||'Séance de psychothérapie'} – ${s.duree} min</td><td style="text-align:center;">1</td><td style="text-align:right;font-family:var(--font-serif);">${fmtMoney(s.tarif)}</td><td style="text-align:right;font-family:var(--font-serif);">${fmtMoney(s.tarif)}</td></tr>`).join('');
-  const payBlock=(CFG.iban||CFG.paiements)?`<div class="inv-payment-block"><strong>Modalités de règlement</strong><br>${CFG.paiements?'Modes acceptés : '+CFG.paiements+'<br>':''}${CFG.iban?'IBAN : '+CFG.iban+'<br>':''}${CFG.bic?'BIC : '+CFG.bic+(CFG.banque?' ('+CFG.banque+')':'')+'<br>':''}Référence virement : Facture ${f.num} – ${pName}</div>`:'';
-  return`<div class="invoice-preview" id="printable-invoice">
-    <div class="inv-header">
-      <div>
-        <div class="inv-logo-name">${CFG.prenom} ${CFG.nom.toUpperCase()}</div>
-        <div class="inv-logo-sub">${CFG.titre||'Psychothérapeute'}${CFG.formation?' · '+CFG.formation:''}</div>
-        <div style="margin-top:.75rem;font-size:12px;color:var(--warm-mid);line-height:1.7;">${adresseBlock}${CFG.tel?'<br>'+CFG.tel:''}${CFG.email?'<br>'+CFG.email:''}</div>
-      </div>
-      <div class="inv-num-block">
-        <div style="font-size:10px;color:var(--warm-mid);font-weight:500;text-transform:uppercase;letter-spacing:.06em;">Facture</div>
-        <div style="font-size:20px;font-family:var(--font-serif);color:var(--warm-dark);margin:.2rem 0;">${f.num}</div>
-        <div style="font-size:12px;color:var(--warm-mid);line-height:1.7;">Date d'émission : ${formatDate(f.date)}<br>Date d'échéance : ${formatDate(f.echeance)}</div>
-      </div>
-    </div>
-    <div class="inv-parties">
-      <div>
-        <div class="inv-party-label">Émetteur</div>
-        <div class="inv-party-name">${CFG.prenom} ${CFG.nom.toUpperCase()}</div>
-        <div class="inv-party-detail">${CFG.titre||''}<br>SIRET : ${CFG.siret}${CFG.tvaNum?'<br>N° TVA : '+CFG.tvaNum:''}</div>
-      </div>
-      <div>
-        <div class="inv-party-label">Destinataire / Patient</div>
-        <div class="inv-party-name">${pName}</div>
-        <div class="inv-party-detail">${p&&p.adresse?p.adresse:'<em style="color:var(--warm-light);">Adresse non renseignée</em>'}</div>
-      </div>
-    </div>
-    <table class="inv-table">
-      <thead><tr><th style="width:18%;">Date</th><th>Désignation de la prestation</th><th style="width:8%;text-align:center;">Qté</th><th style="width:16%;text-align:right;">P.U. HT</th><th style="width:16%;text-align:right;">Montant HT</th></tr></thead>
-      <tbody>${lignes}</tbody>
-    </table>
-    <div class="inv-total-section">
-      <div class="inv-total-row"><span class="inv-total-label">Total HT</span><span class="inv-total-value">${fmtMoney(ht)}</span></div>
-      ${isTVA?`<div class="inv-total-row"><span class="inv-total-label">TVA (20 %)</span><span class="inv-total-value">${fmtMoney(tva)}</span></div>`:''}
-      <div class="inv-total-row" style="border-top:1px solid var(--beige-mid);padding-top:.5rem;margin-top:.25rem;">
-        <span class="inv-total-label inv-grand-total-label">Total TTC à régler</span>
-        <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
-      </div>
-    </div>
-    ${CFG.tvaMention?`<div class="inv-legal">${isTVA?'':CFG.tvaMention}</div>`:''}
-    ${!isTVA&&CFG.tvaMention?`<div class="inv-legal">${CFG.tvaMention}</div>`:''}
-    ${payBlock}
-    <div class="inv-footer">
-      ${CFG.prenom} ${CFG.nom.toUpperCase()}${CFG.titre?' — '+CFG.titre:''}<br>
-      SIRET ${CFG.siret}${CFG.tvaNum?' · N° TVA : '+CFG.tvaNum:''}<br>
-      ${[CFG.adresse,CFG.cp&&CFG.ville?CFG.cp+' '+CFG.ville:''].filter(Boolean).join(', ')}${CFG.tel?' · '+CFG.tel:''}
-      ${CFG.formation?'<br><em>'+CFG.formation+'</em>':''}
-    </div>
-  </div>`;
-}
-
-function viewFacture(id){const f=DB.factures.find(f=>f.id===id);if(!f)return;document.getElementById('facture-view-content').innerHTML=buildInvoice(f);document.getElementById('modal-facture-view').classList.remove('hidden');}
-
-function printFacture(){
-  const content=document.getElementById('printable-invoice').outerHTML;
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Facture</title><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"><style>:root{--sage:#6b8f71;--sage-dark:#4a6b50;--sage-pale:#e8f0e9;--sage-light:#a8c4a2;--beige:#f7f3ee;--beige-mid:#ede5d8;--warm-dark:#3d3530;--warm-mid:#7a6e67;--font-serif:'Cormorant Garamond',Georgia,serif;--font-sans:'DM Sans',system-ui,sans-serif;}*{box-sizing:border-box;margin:0;padding:0;}body{font-family:var(--font-sans);color:var(--warm-dark);padding:2cm;}.invoice-preview{max-width:100%;}.inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;}.inv-logo-name{font-family:var(--font-serif);font-size:22px;font-weight:400;color:var(--sage-dark);}.inv-logo-sub{font-size:11px;color:var(--warm-mid);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}.inv-num-block{text-align:right;}.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.75rem;padding:1.25rem;background:var(--beige);border-radius:8px;}.inv-party-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--warm-mid);margin-bottom:.4rem;}.inv-party-name{font-size:14px;font-weight:500;margin-bottom:.2rem;}.inv-party-detail{font-size:12px;color:var(--warm-mid);line-height:1.6;}.inv-table{width:100%;border-collapse:collapse;margin-bottom:1.5rem;font-size:13px;}.inv-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--warm-mid);font-weight:500;border-bottom:1.5px solid var(--beige-mid);padding:.5rem .75rem;text-align:left;}.inv-table td{padding:.75rem;border-bottom:1px solid var(--beige-mid);}.inv-total-section{border-top:1.5px solid var(--beige-mid);padding-top:1rem;margin-bottom:1rem;}.inv-total-row{display:flex;justify-content:flex-end;margin-bottom:.4rem;}.inv-total-label{font-size:12px;color:var(--warm-mid);min-width:160px;text-align:right;margin-right:1rem;}.inv-total-value{font-size:14px;font-weight:500;min-width:90px;text-align:right;}.inv-grand-total-label{font-size:13px;font-weight:500;color:var(--warm-dark);}.inv-grand-total-value{font-family:var(--font-serif);font-size:22px;color:var(--sage-dark);}.inv-legal{font-size:11px;color:var(--warm-mid);background:var(--beige);padding:.6rem .85rem;border-radius:4px;margin-bottom:1rem;line-height:1.6;}.inv-payment-block{background:var(--sage-pale);border:1px solid var(--sage-light);border-radius:8px;padding:.75rem 1rem;font-size:12px;margin-bottom:1rem;line-height:1.6;}.inv-payment-block strong{color:var(--sage-dark);}.inv-footer{margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--beige-mid);font-size:11px;color:var(--warm-mid);line-height:1.7;}</style></head><body>${content}</body></html>`);
-  w.document.close();setTimeout(()=>w.print(),600);
-}
-
-function renderFactures(){
-  const el=document.getElementById('factures-list');
-  if(DB.factures.length===0){el.innerHTML=`<div class="card"><div class="empty-state"><div class="ei">◻</div><p>Aucune facture générée</p><button class="btn btn-primary" onclick="openModal('modal-facture')">+ Créer une facture</button></div></div>`;return;}
-  const sorted=[...DB.factures].sort((a,b)=>b.date.localeCompare(a.date));
-  const totalCA=DB.factures.reduce((a,f)=>a+f.total,0);
-  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;"><div class="stat-card"><div class="stat-label">Factures émises</div><div class="stat-value">${DB.factures.length}</div></div><div class="stat-card"><div class="stat-label">CA total facturé</div><div class="stat-value" style="font-size:22px;">${totalCA.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')} €</div></div></div><div class="card" style="padding:0;">${sorted.map(f=>{const p=DB.patients.find(p=>p.id===f.patientId);const pn=p?p.prenom+' '+p.nom.toUpperCase():'—';return`<div class="invoice-row" onclick="viewFacture('${f.id}')"><div style="font-size:13px;font-weight:500;color:var(--sage-dark);min-width:100px;">${f.num}</div><div style="flex:1;"><div style="font-size:14px;">${pn}</div><div style="font-size:12px;color:var(--warm-mid);">${formatDate(f.date)} · ${f.seancesIds.length} séance${f.seancesIds.length>1?'s':''}</div></div><div style="font-family:var(--font-serif);font-size:18px;text-align:right;">${fmtMoney(f.total)}</div></div>`;}).join('')}</div>`;
-}
-
-// ── DASHBOARD ──
-let calDate=new Date();
-function calNav(dir){calDate.setMonth(calDate.getMonth()+dir);renderCalendar();}
-function renderDashboard(){
-  const now=new Date();const mo=now.getMonth();const yr=now.getFullYear();
-  document.getElementById('st-p').textContent=DB.patients.filter(p=>p.statut==='actif').length;
-  const sm=DB.seances.filter(s=>{const d=new Date(s.date);return d.getMonth()===mo&&d.getFullYear()===yr&&s.statut==='honoré';});
-  document.getElementById('st-s').textContent=sm.length;
-  document.getElementById('st-f').textContent=DB.seances.filter(s=>s.statut==='honoré'&&!s.facture).length;
-  const ca=sm.reduce((a,s)=>a+s.tarif,0);document.getElementById('st-ca').textContent=ca.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' €';
-  renderCalendar();renderUpcoming();
-}
-function renderCalendar(){
-  const mn=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  const today=new Date();const yr=calDate.getFullYear();const mo=calDate.getMonth();
-  document.getElementById('cal-title').textContent=mn[mo]+' '+yr;
-  const fo=(new Date(yr,mo,1).getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();
-  const rdv=new Set(DB.seances.filter(s=>{const d=new Date(s.date);return d.getMonth()===mo&&d.getFullYear()===yr;}).map(s=>parseInt(s.date.split('-')[2])));
-  const dn=['Lu','Ma','Me','Je','Ve','Sa','Di'];
-  let h=dn.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
-  for(let i=0;i<fo;i++)h+='<div class="cal-day empty"></div>';
-  for(let d=1;d<=dim;d++){const it=d===today.getDate()&&mo===today.getMonth()&&yr===today.getFullYear();h+=`<div class="cal-day${it?' today':''}${rdv.has(d)?' has-rdv':''}">${d}</div>`;}
-  document.getElementById('calendar').innerHTML=h;
-}
-function renderUpcoming(){
-  const now=new Date().toISOString().split('T')[0];
-  const up=DB.seances.filter(s=>s.date>=now&&s.statut==='planifié').sort((a,b)=>a.date.localeCompare(b.date)||a.heure.localeCompare(b.heure)).slice(0,8);
-  const el=document.getElementById('upcoming-list');
-  if(up.length===0){el.innerHTML='<div style="color:var(--warm-mid);font-size:13px;">Aucune séance à venir</div>';return;}
-  el.innerHTML=up.map(s=>{const p=DB.patients.find(p=>p.id===s.patientId);const pn=p?p.prenom+' '+p.nom:'—';const d=s.date.split('-');const mo=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'][parseInt(d[1])-1];return`<div class="seance-line" onclick="viewSeance('${s.id}')" style="cursor:pointer;"><span style="color:var(--warm-mid);font-size:12px;min-width:75px;">${d[2]} ${mo} ${s.heure}</span><span style="font-size:13px;font-weight:500;">${pn}</span></div>`;}).join('');
-}
-
-// ── INIT ──
-load();
-if(isConfigured()){document.getElementById('setup-screen').classList.add('hidden');updateHeader();renderDashboard();}
-const manifest={name:'Cabinet Psychothérapie',short_name:'Cabinet Psy',start_url:'.',display:'standalone',background_color:'#f7f3ee',theme_color:'#6b8f71'};
-const blob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
-document.getElementById('manifest-link').setAttribute('href',URL.createObjectURL(blob));
-</script>
+<script src="app.js"></script>
 </body>
 </html>
