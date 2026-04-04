@@ -774,11 +774,21 @@ function genererFacture() {
   if (!CFG.siret) { alert('SIRET requis. Complétez vos paramètres.'); return; }
 
   const yr    = new Date().getFullYear();
-  const num   = yr + '-' + String(DB.nextNum).padStart(4, '0');
+  const ids    = Array.from(cbs).map(cb => cb.value);
+  const seancesSelected = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
+
+  // Numérotation : ANNEE-JOURSEANCE-NOMPATIENT (première séance, nom sans espaces ni accents)
+  const firstSeanceDate = [...seancesSelected].sort((a,b) => a.date.localeCompare(b.date))[0]?.date || today();
+  const jourSeance = firstSeanceDate.replace(/-/g, '');
+  const patientNum = DB.patients.find(p => p.id === pId);
+  const nomPatient = (patientNum ? (patientNum.nom + patientNum.prenom) : 'PATIENT')
+    .toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/g, '');
+  const num   = yr + '-' + jourSeance + '-' + nomPatient;
   DB.nextNum++;
 
-  const ids    = Array.from(cbs).map(cb => cb.value);
-  const seances = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
+  const seances = seancesSelected;
   const total   = seances.reduce((a, s) => a + s.tarif, 0);
 
   // Collect paiement modes from séances
@@ -836,12 +846,6 @@ function buildInvoice(f) {
           <span class="inv-total-label inv-grand-total-label">Total TTC</span>
           <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
         </div>
-        <div style="margin-top:.75rem;padding:.65rem 1rem;background:var(--sage-pale);border:1px solid var(--sage-light);border-radius:6px;font-size:13px;">
-          ${regUniques.length === 1
-            ? `✓ Réglé le <strong>${formatDate(regUniques[0].date)}</strong>${regUniques[0].mode ? ', <strong>' + fmtMoney(f.total) + '</strong> par <strong>' + regUniques[0].mode + '</strong>' : ' — <strong>' + fmtMoney(f.total) + '</strong>'}`
-            : regUniques.map(r => `✓ Réglé le <strong>${formatDate(r.date)}</strong>${r.mode ? ' par <strong>' + r.mode + '</strong>' : ''}`).join('<br>')
-          }
-        </div>
       </div>`
     : `<div class="inv-total-section">
         <div class="inv-total-row">
@@ -871,12 +875,19 @@ function buildInvoice(f) {
     ? f.paiementsSeances.join(', ')
     : (CFG.paiements || '');
 
+  // Ligne de règlement pour le payBlock
+  const regLine = toutesReglees && regUniques.length > 0
+    ? (regUniques.length === 1
+        ? `<span style="color:var(--sage-dark);font-weight:500;">✓ Réglé le ${formatDate(regUniques[0].date)}${regUniques[0].mode ? ', ' + fmtMoney(f.total) + ' par ' + regUniques[0].mode : ' — ' + fmtMoney(f.total)}</span><br>`
+        : regUniques.map(r => `<span style="color:var(--sage-dark);font-weight:500;">✓ Réglé le ${formatDate(r.date)}${r.mode ? ' par ' + r.mode : ''}</span>`).join('<br>') + '<br>')
+    : (regModes ? 'Mode(s) de paiement : ' + regModes + '<br>' : '');
+
   const payBlock = `<div class="inv-payment-block">
     <strong>Modalités de règlement</strong><br>
-    ${regModes ? 'Mode(s) de paiement : ' + regModes + '<br>' : ''}
+    ${regLine}
     ${CFG.iban   ? 'IBAN : ' + CFG.iban + '<br>' : ''}
     ${CFG.bic    ? 'BIC : ' + CFG.bic + (CFG.banque ? ' (' + CFG.banque + ')' : '') + '<br>' : ''}
-    Référence virement : Facture ${f.num} – ${pName}
+    Référence Facture : ${f.num} – ${pName}
   </div>`;
 
   return `<div class="invoice-preview" id="printable-invoice">
