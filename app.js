@@ -566,6 +566,10 @@ function deleteSeance(id) {
 
 function marquerStatut(id, statut) {
   const s = DB.seances.find(s => s.id === id); if (!s) return;
+  if (statut === 'réglée') {
+    openModalReglement(id);
+    return;
+  }
   s.statut = statut;
   dbSave();
   const returnTo = document.getElementById('s-return-patient').value;
@@ -577,6 +581,37 @@ function marquerStatut(id, statut) {
     renderSeances(); renderDashboard();
   }
   toast('Statut mis à jour ✓', 'success');
+}
+
+function openModalReglement(seanceId) {
+  const s = DB.seances.find(s => s.id === seanceId); if (!s) return;
+  document.getElementById('reg-seance-id').value = seanceId;
+  // date de règlement par défaut = date de la séance
+  document.getElementById('reg-date').value = s.dateReglement || s.date;
+  document.getElementById('reg-paiement').value = s.paiement || '';
+  document.getElementById('modal-reglement').classList.remove('hidden');
+}
+
+function confirmerReglement() {
+  const seanceId = document.getElementById('reg-seance-id').value;
+  const s = DB.seances.find(s => s.id === seanceId); if (!s) return;
+  const dateReg = document.getElementById('reg-date').value;
+  const paiement = document.getElementById('reg-paiement').value;
+  if (!dateReg) { alert('Veuillez indiquer la date de règlement.'); return; }
+  s.statut = 'réglée';
+  s.dateReglement = dateReg;
+  s.paiement = paiement;
+  dbSave();
+  document.getElementById('modal-reglement').classList.add('hidden');
+  const returnTo = document.getElementById('s-return-patient').value;
+  closeModal('modal-seance-view');
+  if (returnTo) {
+    refreshFicheSeances(returnTo);
+    viewSeanceFromFiche(seanceId, returnTo);
+  } else {
+    renderSeances(); renderDashboard();
+  }
+  toast('Séance marquée réglée ✓', 'success');
 }
 
 function viewSeance(id, returnPatientId = '') {
@@ -610,6 +645,7 @@ function viewSeance(id, returnPatientId = '') {
       <div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Tarif</span><span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span></div>
       <div style="display:flex;gap:.75rem;align-items:center;"><span style="color:var(--warm-mid);min-width:110px;">Statut</span><span class="badge badge-${s.statut}">${s.statut}</span></div>
       ${s.paiement ? `<div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Paiement</span><span>${s.paiement}</span></div>` : ''}
+      ${s.dateReglement ? `<div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Réglé le</span><span>${formatDate(s.dateReglement)}</span></div>` : ''}
       ${s.facture  ? `<div style="display:flex;gap:.75rem;align-items:center;"><span style="color:var(--warm-mid);min-width:110px;">Facture</span><span class="badge badge-réglée">Facturée</span></div>` : ''}
     </div>
     ${s.notes ? `<div style="margin-top:1rem;"><div class="section-title">Notes</div><div class="notes-block">${s.notes}</div></div>` : ''}
@@ -777,6 +813,51 @@ function buildInvoice(f) {
   const tva     = isTVA ? (f.total - f.total / 1.20) : 0;
   const adr     = [CFG.adresse, CFG.cp && CFG.ville ? CFG.cp + ' ' + CFG.ville : ''].filter(Boolean).join('<br>');
 
+  // Déterminer si toutes les séances de la facture sont réglées
+  const toutesReglees = seances.every(s => s.statut === 'réglée');
+  // Regrouper les infos de règlement (date + mode)
+  const reglements = seances
+    .filter(s => s.statut === 'réglée' && s.dateReglement)
+    .map(s => ({ date: s.dateReglement, mode: s.paiement || '' }));
+  // On groupe par date+mode pour éviter doublons
+  const regUniques = [...new Map(reglements.map(r => [r.date + '|' + r.mode, r])).values()];
+
+  const totalSection = toutesReglees && regUniques.length > 0
+    ? `<div class="inv-total-section">
+        <div class="inv-total-row">
+          <span class="inv-total-label">Total HT</span>
+          <span class="inv-total-value">${fmtMoney(ht)}</span>
+        </div>
+        ${isTVA ? `<div class="inv-total-row">
+          <span class="inv-total-label">TVA (20 %)</span>
+          <span class="inv-total-value">${fmtMoney(tva)}</span>
+        </div>` : ''}
+        <div class="inv-total-row" style="border-top:1px solid var(--beige-mid);padding-top:.5rem;margin-top:.25rem;">
+          <span class="inv-total-label inv-grand-total-label">Total TTC</span>
+          <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
+        </div>
+        <div style="margin-top:.75rem;padding:.65rem 1rem;background:var(--sage-pale);border:1px solid var(--sage-light);border-radius:6px;font-size:13px;">
+          ${regUniques.length === 1
+            ? `✓ Réglé le <strong>${formatDate(regUniques[0].date)}</strong>${regUniques[0].mode ? ', <strong>' + fmtMoney(f.total) + '</strong> par <strong>' + regUniques[0].mode + '</strong>' : ' — <strong>' + fmtMoney(f.total) + '</strong>'}`
+            : regUniques.map(r => `✓ Réglé le <strong>${formatDate(r.date)}</strong>${r.mode ? ' par <strong>' + r.mode + '</strong>' : ''}`).join('<br>')
+          }
+        </div>
+      </div>`
+    : `<div class="inv-total-section">
+        <div class="inv-total-row">
+          <span class="inv-total-label">Total HT</span>
+          <span class="inv-total-value">${fmtMoney(ht)}</span>
+        </div>
+        ${isTVA ? `<div class="inv-total-row">
+          <span class="inv-total-label">TVA (20 %)</span>
+          <span class="inv-total-value">${fmtMoney(tva)}</span>
+        </div>` : ''}
+        <div class="inv-total-row" style="border-top:1px solid var(--beige-mid);padding-top:.5rem;margin-top:.25rem;">
+          <span class="inv-total-label inv-grand-total-label">Total TTC à régler</span>
+          <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
+        </div>
+      </div>`;
+
   const lignes = seances.map(s => `<tr>
     <td>${formatDate(s.date)}</td>
     <td>${f.objet || 'Séance de psychothérapie'} – ${s.duree} min</td>
@@ -847,20 +928,7 @@ function buildInvoice(f) {
       <tbody>${lignes}</tbody>
     </table>
 
-    <div class="inv-total-section">
-      <div class="inv-total-row">
-        <span class="inv-total-label">Total HT</span>
-        <span class="inv-total-value">${fmtMoney(ht)}</span>
-      </div>
-      ${isTVA ? `<div class="inv-total-row">
-        <span class="inv-total-label">TVA (20 %)</span>
-        <span class="inv-total-value">${fmtMoney(tva)}</span>
-      </div>` : ''}
-      <div class="inv-total-row" style="border-top:1px solid var(--beige-mid);padding-top:.5rem;margin-top:.25rem;">
-        <span class="inv-total-label inv-grand-total-label">Total TTC à régler</span>
-        <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
-      </div>
-    </div>
+    ${totalSection}
 
     ${CFG.tvaMention ? `<div class="inv-legal">${CFG.tvaMention}</div>` : ''}
     ${payBlock}
@@ -966,14 +1034,26 @@ function calNav(dir) { calDate.setMonth(calDate.getMonth() + dir); renderCalenda
 function renderDashboard() {
   const now = new Date(), mo = now.getMonth(), yr = now.getFullYear();
   document.getElementById('st-p').textContent = DB.patients.filter(p => p.statut === 'actif').length;
-  const sm = DB.seances.filter(s => {
+
+  // Séances du mois
+  const seancesMois = DB.seances.filter(s => {
     const d = new Date(s.date);
-    return d.getMonth() === mo && d.getFullYear() === yr && s.statut === 'honoré';
+    return d.getMonth() === mo && d.getFullYear() === yr;
   });
-  document.getElementById('st-s').textContent = sm.length;
-  document.getElementById('st-f').textContent = DB.seances.filter(s => (s.statut === 'honoré' || s.statut === 'réglée') && !s.facture).length;
-  const ca = sm.reduce((a, s) => a + s.tarif, 0);
-  document.getElementById('st-ca').textContent = fmtNum(ca) + ' €';
+  const honoreesMois = seancesMois.filter(s => s.statut === 'honoré' || s.statut === 'réglée');
+  const planifieesMois = seancesMois.filter(s => s.statut === 'planifié');
+  document.getElementById('st-s').textContent = honoreesMois.length + ' / ' + (honoreesMois.length + planifieesMois.length);
+
+  // À facturer : réglées / honorées non encore facturées
+  const regléesNonFact = DB.seances.filter(s => s.statut === 'réglée' && !s.facture).length;
+  const honoréesNonFact = DB.seances.filter(s => s.statut === 'honoré' && !s.facture).length;
+  document.getElementById('st-f').textContent = regléesNonFact + ' / ' + (regléesNonFact + honoréesNonFact);
+
+  // CA : total réglées du mois / total séances du mois
+  const caReglees = honoreesMois.filter(s => s.statut === 'réglée').reduce((a, s) => a + s.tarif, 0);
+  const caTotal   = seancesMois.filter(s => s.statut !== 'annulé').reduce((a, s) => a + s.tarif, 0);
+  document.getElementById('st-ca').textContent = fmtNum(caReglees) + ' / ' + fmtNum(caTotal) + ' €';
+
   renderCalendar();
   renderUpcoming();
 }

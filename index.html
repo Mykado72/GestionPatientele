@@ -127,9 +127,9 @@
     </div>
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-label">Patients actifs</div><div class="stat-value" id="st-p">0</div></div>
-      <div class="stat-card"><div class="stat-label">Séances ce mois</div><div class="stat-value" id="st-s">0</div></div>
-      <div class="stat-card"><div class="stat-label">À facturer</div><div class="stat-value" id="st-f">0</div></div>
-      <div class="stat-card"><div class="stat-label">CA ce mois</div><div class="stat-value" id="st-ca" style="font-size:22px;">0 €</div></div>
+      <div class="stat-card"><div class="stat-label">Séances ce mois</div><div class="stat-value" style="font-size:18px;" id="st-s">0</div><div class="stat-sublabel">honorées / planifiées</div></div>
+      <div class="stat-card"><div class="stat-label">À facturer</div><div class="stat-value" style="font-size:18px;" id="st-f">0</div><div class="stat-sublabel">réglées / honorées</div></div>
+      <div class="stat-card"><div class="stat-label">CA ce mois</div><div class="stat-value" style="font-size:18px;" id="st-ca">0 €</div><div class="stat-sublabel">réglé / total</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
       <div class="card">
@@ -500,6 +500,33 @@
       <button class="btn btn-secondary" onclick="closeModal('modal-facture-view')">Fermer</button>
     </div>
     <div id="facture-view-content"></div>
+  </div>
+</div>
+
+<!-- ── Modal Règlement ── -->
+<div class="modal-overlay hidden" id="modal-reglement">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" onclick="document.getElementById('modal-reglement').classList.add('hidden')">✕</button>
+    <h2 class="modal-title">Marquer comme réglée</h2>
+    <input type="hidden" id="reg-seance-id">
+    <div class="form-group">
+      <label>Date de règlement <span class="req">*</span></label>
+      <input type="date" id="reg-date">
+    </div>
+    <div class="form-group">
+      <label>Mode de paiement</label>
+      <select id="reg-paiement">
+        <option value="">— non défini —</option>
+        <option value="Espèces">Espèces</option>
+        <option value="Chèque">Chèque</option>
+        <option value="Virement">Virement</option>
+        <option value="Carte bancaire">Carte bancaire</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-reglement').classList.add('hidden')">Annuler</button>
+      <button class="btn btn-success" onclick="confirmerReglement()">💶 Confirmer le règlement</button>
+    </div>
   </div>
 </div>
 
