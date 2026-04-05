@@ -409,12 +409,14 @@ function refreshFicheSeances(patientId) {
 }
 
 function renderPatients() {
-  const q = document.getElementById('search-patients').value.toLowerCase();
+  const q  = document.getElementById('search-patients').value.toLowerCase();
+  const st = document.getElementById('filter-patient-statut').value;
   const el = document.getElementById('patients-list');
-  const filtered = DB.patients.filter(p =>
-    (p.prenom + ' ' + p.nom).toLowerCase().includes(q) ||
-    (p.motif || '').toLowerCase().includes(q)
-  );
+  const filtered = DB.patients.filter(p => {
+    const matchQ  = (p.prenom + ' ' + p.nom).toLowerCase().includes(q) || (p.motif || '').toLowerCase().includes(q);
+    const matchSt = !st || p.statut === st;
+    return matchQ && matchSt;
+  });
   if (filtered.length === 0) {
     el.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="ei">◈</div>
@@ -1380,7 +1382,149 @@ function renderDashboard() {
   renderUpcoming();
 }
 
-function showAFacturerModal() {
+function goToPatients(statut) {
+  const btn = document.querySelectorAll('.nav-btn')[1];
+  showPage('patients', btn);
+  document.getElementById('filter-patient-statut').value = statut || '';
+  document.getElementById('search-patients').value = '';
+  renderPatients();
+}
+
+function goToSeancesMois() {
+  const btn = document.querySelectorAll('.nav-btn')[2];
+  showPage('seances', btn);
+  // Filtre sur le 1er jour du mois courant avec filter-date vide — on filtre via statut+mois custom
+  const now = new Date();
+  const yr  = now.getFullYear();
+  const mo  = String(now.getMonth() + 1).padStart(2, '0');
+  // On passe par un filtre mois injecté dans filter-date via data attribute
+  document.getElementById('filter-date').value = '';
+  document.getElementById('filter-date').dataset.mois = yr + '-' + mo;
+  document.getElementById('filter-statut').value = '';
+  populateFilterPat();
+  renderSeancesMois(yr + '-' + mo);
+}
+
+function renderSeancesMois(moisStr) {
+  // Remplace renderSeances pour afficher les séances du mois ciblé
+  const st   = document.getElementById('filter-statut').value;
+  const pid  = document.getElementById('filter-pat').value;
+  let list   = [...DB.seances]
+    .filter(s => s.date.startsWith(moisStr))
+    .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+  if (st)  list = list.filter(s => s.statut === st);
+  if (pid) list = list.filter(s => s.patientId === pid);
+
+  const el = document.getElementById('seances-list');
+
+  // Badge de filtre actif
+  const [yr, mo] = moisStr.split('-');
+  const labelMois = MOIS_NOMS[parseInt(mo) - 1] + ' ' + yr;
+  let html = `<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;font-size:13px;color:var(--sage-dark);background:var(--sage-pale);border:1px solid var(--sage-light);border-radius:var(--radius-sm);padding:.4rem .75rem;">
+    <span>📅 Filtre : <strong>${labelMois}</strong></span>
+    <button class="btn btn-secondary btn-xs" style="margin-left:auto;" onclick="delete document.getElementById('filter-date').dataset.mois;renderSeances();">✕ Retirer le filtre</button>
+  </div>`;
+
+  if (list.length === 0) {
+    html += `<div class="empty-state"><div class="ei">◷</div><p>Aucune séance en ${labelMois}</p></div>`;
+    el.innerHTML = html;
+    return;
+  }
+  list.forEach(s => {
+    const pn = getPatientName(s.patientId);
+    const d  = s.date.split('-');
+    const mo = MOIS_SHORT[parseInt(d[1])-1];
+    html += `<div class="rdv-item" onclick="viewSeance('${s.id}')">
+      <div class="rdv-date"><div class="day">${d[2]}</div><div class="month">${mo}</div></div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:500;">${pn}</div>
+        <div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${s.heure} · ${s.duree} min${s.paiement ? ' · ' + s.paiement : ''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <span class="badge badge-${s.statut}">${s.statut}</span>
+        <span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function showCaModal() {
+  const now = new Date();
+  const mo  = now.getMonth(), yr = now.getFullYear();
+  const labelMois = MOIS_NOMS[mo] + ' ' + yr;
+
+  // Toutes les séances du mois (hors annulées)
+  const seancesMois = DB.seances.filter(s => {
+    const d = new Date(s.date);
+    return d.getMonth() === mo && d.getFullYear() === yr && s.statut !== 'annulé';
+  }).sort((a,b) => a.date.localeCompare(b.date));
+
+  const reglees    = seancesMois.filter(s => s.statut === 'réglée');
+  const honorees   = seancesMois.filter(s => s.statut === 'honoré');
+  const planifiees = seancesMois.filter(s => s.statut === 'planifié');
+
+  const caRegle    = reglees.reduce((a,s) => a + s.tarif, 0);
+  const caHonore   = honorees.reduce((a,s) => a + s.tarif, 0);
+  const caPlanifie = planifiees.reduce((a,s) => a + s.tarif, 0);
+  const caTotal    = caRegle + caHonore + caPlanifie;
+
+  function lignes(liste) {
+    if (!liste.length) return '<div style="color:var(--warm-mid);font-size:13px;padding:.4rem 0;">Aucune</div>';
+    return liste.map(s => `
+      <div style="display:flex;align-items:center;gap:.75rem;padding:.45rem 0;border-bottom:1px solid var(--beige-mid);font-size:13px;">
+        <span style="min-width:100px;color:var(--warm-mid);">${formatDateShort(s.date)}</span>
+        <span style="flex:1;">${getPatientName(s.patientId, false)}</span>
+        ${s.paiement ? `<span style="font-size:11px;color:var(--warm-mid);">${s.paiement}</span>` : ''}
+        <span style="font-family:var(--font-serif);font-size:15px;">${fmtMoney(s.tarif)}</span>
+      </div>`).join('');
+  }
+
+  function bloc(titre, couleur, liste, total, icon) {
+    return `<div style="margin-bottom:1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;">
+        <div style="font-weight:500;font-size:13px;color:${couleur};">${icon} ${titre} (${liste.length})</div>
+        <div style="font-family:var(--font-serif);font-size:18px;color:${couleur};">${fmtMoney(total)}</div>
+      </div>
+      <div style="border-left:3px solid ${couleur};padding-left:.75rem;">${lignes(liste)}</div>
+    </div>`;
+  }
+
+  document.getElementById('modal-ca-title').textContent = 'CA — ' + labelMois;
+  document.getElementById('modal-ca-content').innerHTML = `
+    <!-- Résumé -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem;">
+      <div class="stat-card" style="padding:.75rem;">
+        <div class="stat-label">Encaissé</div>
+        <div style="font-family:var(--font-serif);font-size:22px;color:var(--success);">${fmtMoney(caRegle)}</div>
+      </div>
+      <div class="stat-card" style="padding:.75rem;">
+        <div class="stat-label">À encaisser</div>
+        <div style="font-family:var(--font-serif);font-size:22px;color:var(--info);">${fmtMoney(caHonore)}</div>
+      </div>
+      <div class="stat-card" style="padding:.75rem;">
+        <div class="stat-label">Total prévu</div>
+        <div style="font-family:var(--font-serif);font-size:22px;color:var(--sage-dark);">${fmtMoney(caTotal)}</div>
+      </div>
+    </div>
+
+    <!-- Jauge de progression -->
+    <div style="margin-bottom:1.5rem;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--warm-mid);margin-bottom:.3rem;">
+        <span>Encaissé ${caTotal > 0 ? Math.round(caRegle/caTotal*100) : 0} %</span>
+        <span>${fmtMoney(caRegle)} / ${fmtMoney(caTotal)}</span>
+      </div>
+      <div style="background:var(--beige-mid);border-radius:8px;height:10px;overflow:hidden;">
+        <div style="height:100%;border-radius:8px;background:var(--success);width:${caTotal > 0 ? Math.min(100, caRegle/caTotal*100) : 0}%;transition:width .4s;"></div>
+      </div>
+    </div>
+
+    ${bloc('Séances réglées', 'var(--success)', reglees, caRegle, '✓')}
+    ${bloc('Séances honorées (non réglées)', 'var(--info)', honorees, caHonore, '◷')}
+    ${planifiees.length ? bloc('Séances planifiées', 'var(--warm-mid)', planifiees, caPlanifie, '📅') : ''}
+  `;
+  document.getElementById('modal-ca').classList.remove('hidden');
+}
   const seances = DB.seances
     .filter(s => (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
     .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));

@@ -126,10 +126,16 @@
       <h1 class="page-title" id="dash-greeting">Tableau de bord</h1>
     </div>
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label">Patients actifs</div><div class="stat-value" id="st-p">0</div></div>
-      <div class="stat-card"><div class="stat-label">Séances ce mois</div><div class="stat-value" style="font-size:18px;" id="st-s">0</div><div class="stat-sublabel">honorées / planifiées</div></div>
+      <div class="stat-card stat-card-clickable" id="st-p-card" onclick="goToPatients('actif')" title="Voir les patients actifs" style="cursor:pointer;">
+        <div class="stat-label">Patients actifs</div><div class="stat-value" id="st-p">0</div>
+      </div>
+      <div class="stat-card stat-card-clickable" id="st-s-card" onclick="goToSeancesMois()" title="Voir les séances du mois" style="cursor:pointer;">
+        <div class="stat-label">Séances ce mois</div><div class="stat-value" style="font-size:18px;" id="st-s">0</div><div class="stat-sublabel">honorées / planifiées</div>
+      </div>
       <div class="stat-card" id="st-f-card"><div class="stat-label">À facturer</div><div class="stat-value" style="font-size:18px;" id="st-f">0</div><div class="stat-sublabel">réglées / honorées</div></div>
-      <div class="stat-card"><div class="stat-label">CA ce mois</div><div class="stat-value" style="font-size:18px;" id="st-ca">0 €</div><div class="stat-sublabel">réglé / total</div></div>
+      <div class="stat-card stat-card-clickable" id="st-ca-card" onclick="showCaModal()" title="Voir le détail du CA" style="cursor:pointer;">
+        <div class="stat-label">CA ce mois</div><div class="stat-value" style="font-size:18px;" id="st-ca">0 €</div><div class="stat-sublabel">réglé / total</div>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
       <div class="card">
@@ -155,9 +161,17 @@
       <h1 class="page-title">Patients</h1>
       <button class="btn btn-primary" onclick="openModal('modal-patient')">+ Nouveau patient</button>
     </div>
-    <div class="search-bar">
-      <span class="search-icon">⌕</span>
-      <input type="text" placeholder="Rechercher un patient…" id="search-patients" oninput="renderPatients()">
+    <div style="display:flex;gap:.75rem;margin-bottom:.75rem;align-items:center;flex-wrap:wrap;">
+      <div class="search-bar" style="margin-bottom:0;flex:1;min-width:180px;">
+        <span class="search-icon">⌕</span>
+        <input type="text" placeholder="Rechercher un patient…" id="search-patients" oninput="renderPatients()">
+      </div>
+      <select id="filter-patient-statut" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderPatients()">
+        <option value="">Tous les statuts</option>
+        <option value="actif">Actifs</option>
+        <option value="inactif">Inactifs</option>
+        <option value="suivi-terminé">Suivi terminé</option>
+      </select>
     </div>
     <div class="card-grid" id="patients-list"></div>
   </div>
@@ -552,6 +566,18 @@
       <button class="btn btn-secondary" onclick="closeModal('modal-facture-view')">Fermer</button>
     </div>
     <div id="facture-view-content"></div>
+  </div>
+</div>
+
+<!-- ── Modal CA Détaillé ── -->
+<div class="modal-overlay hidden" id="modal-ca">
+  <div class="modal" style="max-width:600px;">
+    <button class="modal-close" onclick="closeModal('modal-ca')">✕</button>
+    <h2 class="modal-title" id="modal-ca-title">CA — Détail</h2>
+    <div id="modal-ca-content" style="max-height:70vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-ca')">Fermer</button>
+    </div>
   </div>
 </div>
 
