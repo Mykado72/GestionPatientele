@@ -166,9 +166,12 @@
   <div class="page" id="page-seances">
     <div class="page-header">
       <h1 class="page-title">Séances</h1>
-      <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Nouvelle séance</button>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="openModalIndispo()" title="Ajouter une indisponibilité">⛔ Indisponibilité</button>
+        <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Nouvelle séance</button>
+      </div>
     </div>
-    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
       <select id="filter-statut" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()">
         <option value="">Tous les statuts</option>
         <option value="planifié">Planifiées</option>
@@ -179,11 +182,14 @@
       <select id="filter-pat" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()">
         <option value="">Tous les patients</option>
       </select>
+      <div style="display:flex;align-items:center;gap:.4rem;">
+        <input type="date" id="filter-date" style="border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);padding:.35rem .6rem;font-size:13px;font-family:var(--font-sans);background:var(--white);color:var(--warm-dark);cursor:pointer;" onchange="renderSeances()">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('filter-date').value='';renderSeances();" title="Effacer le filtre date">✕</button>
+      </div>
     </div>
     <div id="seances-list"></div>
+    <div id="indispo-regles-summary"></div>
   </div>
-
-  <!-- ── FACTURES ── -->
   <div class="page" id="page-factures">
     <div class="page-header">
       <h1 class="page-title">Factures</h1>
@@ -420,17 +426,63 @@
     </div>
 
     <div id="recurrence-box" class="recurrence-box" style="display:none;">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Répéter tous les (jours)</label>
-          <input type="number" id="s-rec-freq" value="7" min="1" max="365" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
-          <div class="form-hint">7 = hebdomadaire · 14 = bimensuel · 30 = mensuel</div>
-        </div>
-        <div class="form-group">
-          <label>Nombre de séances total</label>
-          <input type="number" id="s-rec-count" value="4" min="1" max="52" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+      <!-- Mode de récurrence -->
+      <div class="tab-group" style="margin-bottom:.75rem;">
+        <button class="tab-btn active" onclick="switchRecMode('intervalle',this)">Par intervalle</button>
+        <button class="tab-btn" onclick="switchRecMode('jourhebdo',this)">Par jour de semaine</button>
+      </div>
+
+      <!-- Mode intervalle (existant) -->
+      <div id="rec-tab-intervalle">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Répéter tous les (jours)</label>
+            <input type="number" id="s-rec-freq" value="7" min="1" max="365" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+            <div class="form-hint">7 = hebdo · 14 = bimensuel · 30 = mensuel</div>
+          </div>
+          <div class="form-group">
+            <label>Nombre de séances</label>
+            <input type="number" id="s-rec-count" value="4" min="1" max="52" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+          </div>
         </div>
       </div>
+
+      <!-- Mode jour de semaine -->
+      <div id="rec-tab-jourhebdo" style="display:none;">
+        <div class="form-group">
+          <label>Jour de la semaine <span class="req">*</span></label>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem;" id="rec-jours-semaine">
+            <label class="jour-pill"><input type="checkbox" value="1" onchange="updateRecurrencePreview()"> Lu</label>
+            <label class="jour-pill"><input type="checkbox" value="2" onchange="updateRecurrencePreview()"> Ma</label>
+            <label class="jour-pill"><input type="checkbox" value="3" onchange="updateRecurrencePreview()"> Me</label>
+            <label class="jour-pill"><input type="checkbox" value="4" onchange="updateRecurrencePreview()"> Je</label>
+            <label class="jour-pill"><input type="checkbox" value="5" onchange="updateRecurrencePreview()"> Ve</label>
+            <label class="jour-pill"><input type="checkbox" value="6" onchange="updateRecurrencePreview()"> Sa</label>
+            <label class="jour-pill"><input type="checkbox" value="0" onchange="updateRecurrencePreview()"> Di</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>1 semaine sur</label>
+            <select id="s-rec-semaine-freq" onchange="updateRecurrencePreview()">
+              <option value="1">1 (toutes les semaines)</option>
+              <option value="2">2 (une semaine sur deux)</option>
+              <option value="3">3</option>
+              <option value="4">4 (une fois par mois)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Nombre de séances</label>
+            <input type="number" id="s-rec-count-hebdo" value="4" min="1" max="52" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>À partir du</label>
+          <input type="date" id="s-rec-debut-hebdo" onchange="updateRecurrencePreview()">
+          <div class="form-hint">Laissez vide pour partir de la date de la séance</div>
+        </div>
+      </div>
+
       <div class="recurrence-preview" id="rec-preview"></div>
     </div>
 
@@ -500,6 +552,90 @@
       <button class="btn btn-secondary" onclick="closeModal('modal-facture-view')">Fermer</button>
     </div>
     <div id="facture-view-content"></div>
+  </div>
+</div>
+
+<!-- ── Modal Indisponibilité ── -->
+<div class="modal-overlay hidden" id="modal-indispo">
+  <div class="modal" style="max-width:460px;">
+    <button class="modal-close" onclick="closeModal('modal-indispo')">✕</button>
+    <h2 class="modal-title">Ajouter une indisponibilité</h2>
+
+    <!-- Type : ponctuelle ou récurrente -->
+    <div class="tab-group" style="margin-bottom:1rem;">
+      <button class="tab-btn active" onclick="switchIndispoType('ponctuelle',this)">Date précise</button>
+      <button class="tab-btn" onclick="switchIndispoType('recurrente',this)">Récurrente</button>
+    </div>
+
+    <!-- Ponctuelle -->
+    <div id="indispo-tab-ponctuelle">
+      <div class="form-group">
+        <label>Date <span class="req">*</span></label>
+        <input type="date" id="indispo-date">
+      </div>
+    </div>
+
+    <!-- Récurrente -->
+    <div id="indispo-tab-recurrente" style="display:none;">
+      <div class="form-group">
+        <label>Jour(s) de la semaine <span class="req">*</span></label>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem;" id="indispo-jours-semaine">
+          <label class="jour-pill"><input type="checkbox" value="1"> Lu</label>
+          <label class="jour-pill"><input type="checkbox" value="2"> Ma</label>
+          <label class="jour-pill"><input type="checkbox" value="3"> Me</label>
+          <label class="jour-pill"><input type="checkbox" value="4"> Je</label>
+          <label class="jour-pill"><input type="checkbox" value="5"> Ve</label>
+          <label class="jour-pill"><input type="checkbox" value="6"> Sa</label>
+          <label class="jour-pill"><input type="checkbox" value="0"> Di</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>1 semaine sur</label>
+          <select id="indispo-rec-freq">
+            <option value="1">1 (toutes les semaines)</option>
+            <option value="2">2 (une semaine sur deux)</option>
+            <option value="3">3</option>
+            <option value="4">4 (une fois par mois)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>À partir du <span class="req">*</span></label>
+          <input type="date" id="indispo-rec-debut">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Jusqu'au (optionnel)</label>
+        <input type="date" id="indispo-rec-fin">
+        <div class="form-hint">Laisser vide = indéfiniment</div>
+      </div>
+    </div>
+
+    <!-- Commun -->
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <input type="checkbox" id="indispo-journee" onchange="toggleIndispoJournee()" style="width:auto;accent-color:var(--sage);" checked>
+        Journée entière indisponible
+      </label>
+    </div>
+    <div id="indispo-créneau-group" style="display:none;gap:.75rem;">
+      <div class="form-group" style="flex:1;">
+        <label>Heure début</label>
+        <input type="time" id="indispo-heure-debut" value="09:00">
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>Heure fin</label>
+        <input type="time" id="indispo-heure-fin" value="10:00">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Motif (optionnel)</label>
+      <input type="text" id="indispo-motif" placeholder="Congé, formation, repos…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-indispo')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveIndispo()">Enregistrer</button>
+    </div>
   </div>
 </div>
 

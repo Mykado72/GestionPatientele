@@ -207,6 +207,16 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .info-box.sage { background: var(--sage-pale); border: 1px solid var(--sage-light); }
 .info-box.sage strong { color: var(--sage-dark); }
 
+/* ── Indisponibilités ── */
+.indispo-block { display: flex; align-items: center; justify-content: space-between; gap: .75rem; background: var(--terra-pale); border: 1px solid rgba(201,149,106,.4); border-radius: var(--radius-sm); padding: .55rem .85rem; margin-bottom: .5rem; font-size: 13px; color: var(--warm-dark); }
+.cal-day.is-indispo { background: var(--terra-pale); color: var(--terra); }
+.cal-day.is-indispo.today { background: var(--terra); color: white; }
+.cal-day.clickable { cursor: pointer; }
+.cal-day.has-rdv.clickable:hover { background: var(--sage-pale); color: var(--sage-dark); transform: scale(1.1); transition: var(--t); }
+.jour-pill { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .55rem; border: 1.5px solid var(--beige-mid); border-radius: 20px; font-size: 12px; cursor: pointer; transition: var(--t); user-select: none; }
+.jour-pill:has(input:checked) { background: var(--sage-pale); border-color: var(--sage); color: var(--sage-dark); font-weight: 500; }
+.jour-pill input { width: auto; accent-color: var(--sage); }
+
 /* ── Misc helpers ── */
 .section-title { font-family: var(--font-serif); font-size: 16px; font-weight: 400; color: var(--warm-mid); margin-bottom: .75rem; font-style: italic; }
 .notes-block { background: var(--beige); border-radius: var(--radius-sm); border: 1px solid var(--beige-mid); padding: .85rem 1rem; font-size: 13px; color: var(--warm-dark); line-height: 1.6; white-space: pre-wrap; }

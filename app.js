@@ -7,7 +7,7 @@
 // ════════════════════════════════════════
 // DATA STORE
 // ════════════════════════════════════════
-let DB = { patients: [], seances: [], factures: [], nextNum: 1 };
+let DB = { patients: [], seances: [], factures: [], nextNum: 1, indisponibilites: [] };
 let CFG = {
   prenom:'', nom:'', titre:'', formation:'',
   adresse:'', cp:'', ville:'', tel:'', email:'',
@@ -18,6 +18,8 @@ let CFG = {
 function dbLoad() {
   try { const d = localStorage.getItem('psy-db');  if (d) DB  = JSON.parse(d); } catch(e) {}
   try { const c = localStorage.getItem('psy-cfg'); if (c) CFG = { ...CFG, ...JSON.parse(c) }; } catch(e) {}
+  if (!DB.indisponibilites)        DB.indisponibilites        = [];
+  if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
 }
 function dbSave()  { try { localStorage.setItem('psy-db',  JSON.stringify(DB));  } catch(e) {} }
 function cfgSave() { try { localStorage.setItem('psy-cfg', JSON.stringify(CFG)); } catch(e) {} }
@@ -464,8 +466,69 @@ function toggleRecurrence() {
   if (on) updateRecurrencePreview();
 }
 
+function switchRecMode(mode, btn) {
+  document.getElementById('rec-tab-intervalle').style.display  = mode === 'intervalle'  ? '' : 'none';
+  document.getElementById('rec-tab-jourhebdo').style.display   = mode === 'jourhebdo'   ? '' : 'none';
+  document.querySelectorAll('#recurrence-box .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateRecurrencePreview();
+}
+
+// Retourne le mode de récurrence actif ('intervalle' ou 'jourhebdo')
+function getRecMode() {
+  const el = document.getElementById('rec-tab-jourhebdo');
+  return el && el.style.display !== 'none' ? 'jourhebdo' : 'intervalle';
+}
+
+// Calcule les dates de récurrence par jour de semaine
+function calcDatesJourHebdo(startDate) {
+  const jours    = Array.from(document.querySelectorAll('#rec-jours-semaine input:checked')).map(cb => parseInt(cb.value));
+  if (jours.length === 0) return [];
+  const freq     = parseInt(document.getElementById('s-rec-semaine-freq').value) || 1;
+  const count    = parseInt(document.getElementById('s-rec-count-hebdo').value) || 4;
+  const debutStr = document.getElementById('s-rec-debut-hebdo').value || startDate;
+  if (!debutStr) return [];
+
+  const results = [];
+  const debut   = new Date(debutStr);
+  // Trouver le lundi de la semaine de départ
+  const startMonday = new Date(debut);
+  startMonday.setDate(debut.getDate() - ((debut.getDay() + 6) % 7));
+
+  let weekOffset = 0;
+  while (results.length < count) {
+    const weekStart = new Date(startMonday);
+    weekStart.setDate(startMonday.getDate() + weekOffset * 7);
+    jours.forEach(dow => {
+      if (results.length >= count) return;
+      // dow: 0=Di,1=Lu…6=Sa → JS getDay: 0=Di,1=Lu…6=Sa
+      const candidate = new Date(weekStart);
+      // weekStart est lundi (getDay()=1), décaler
+      const mondayDow = 1;
+      const delta = (dow - mondayDow + 7) % 7;
+      candidate.setDate(weekStart.getDate() + delta);
+      const candidateStr = candidate.toISOString().split('T')[0];
+      if (candidateStr >= debutStr) results.push(candidateStr);
+    });
+    weekOffset += freq;
+    if (weekOffset > 500) break; // sécurité
+  }
+  return results.sort((a,b) => a.localeCompare(b)).slice(0, count);
+}
+
 function updateRecurrencePreview() {
   const startDate = document.getElementById('s-date').value;
+  const mode = getRecMode();
+
+  if (mode === 'jourhebdo') {
+    const dates = calcDatesJourHebdo(startDate);
+    if (dates.length === 0) { document.getElementById('rec-preview').textContent = ''; return; }
+    document.getElementById('rec-preview').innerHTML =
+      `<strong>${dates.length} séances</strong> planifiées :<br>` + dates.map(formatDateShort).join(' · ');
+    return;
+  }
+
+  // Mode intervalle
   const freq  = parseInt(document.getElementById('s-rec-freq').value)  || 7;
   const count = parseInt(document.getElementById('s-rec-count').value) || 4;
   if (!startDate || count < 1) { document.getElementById('rec-preview').textContent = ''; return; }
@@ -489,14 +552,67 @@ function saveSeance() {
 
   const id      = document.getElementById('s-edit-id').value;
   const returnTo = document.getElementById('s-return-patient').value;
+  const duree   = parseInt(document.getElementById('s-duree').value);
   const base    = {
-    patientId, date, heure,
-    duree:    parseInt(document.getElementById('s-duree').value),
+    patientId, date, heure, duree,
     tarif:    parseFloat(document.getElementById('s-tarif').value) || 60,
     statut:   document.getElementById('s-statut').value,
     paiement: document.getElementById('s-paiement').value,
     notes:    document.getElementById('s-notes').value.trim()
   };
+
+  // ── Vérification indisponibilité du jour ──
+  const indispoJour = (DB.indisponibilites || []).find(i => i.date === date && !i.heureDebut)
+    || (!document.getElementById('indispo-journee') && getIndispoRegleForDate(date));
+  const regleJour = getIndispoRegleForDate(date);
+  if (indispoJour || (regleJour && !regleJour.heureDebut)) {
+    const motif = (indispoJour || regleJour)?.motif;
+    if (!confirm(`⚠ Le ${formatDate(date)} est marqué indisponible${motif ? ' (' + motif + ')' : ''}.\nContinuer quand même ?`)) return;
+  }
+
+  // ── Vérification chevauchement créneaux ──
+  function toMin(h) { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; }
+  const startMin = toMin(heure);
+  const endMin   = startMin + duree;
+
+  // Vérifier créneaux indisponibles (avec heure)
+  const indispoSlot = (DB.indisponibilites || []).find(i => {
+    if (i.date !== date || !i.heureDebut) return false;
+    const is = toMin(i.heureDebut), ie = toMin(i.heureFin || i.heureDebut) + (i.duree || 60);
+    return startMin < ie && endMin > is;
+  });
+  if (indispoSlot) {
+    if (!confirm(`⚠ Ce créneau chevauche une indisponibilité (${indispoSlot.heureDebut}${indispoSlot.motif ? ' — ' + indispoSlot.motif : ''}).\nContinuer quand même ?`)) return;
+  }
+
+  // Vérifier chevauchement avec d'autres séances
+  const recur = !id && document.getElementById('s-recurrence').checked;
+  let datesToCheck = [date];
+  if (recur) {
+    const mode = getRecMode();
+    if (mode === 'jourhebdo') {
+      datesToCheck = calcDatesJourHebdo(date);
+    } else {
+      const freq  = parseInt(document.getElementById('s-rec-freq').value) || 7;
+      const count = parseInt(document.getElementById('s-rec-count').value) || 1;
+      datesToCheck = [];
+      for (let i = 0; i < count; i++) datesToCheck.push(addDays(date, freq * i));
+    }
+  }
+
+  const conflicts = [];
+  datesToCheck.forEach(d => {
+    DB.seances
+      .filter(s => s.date === d && s.id !== id && s.statut !== 'annulé')
+      .forEach(s => {
+        const ss = toMin(s.heure), se = ss + s.duree;
+        if (startMin < se && endMin > ss) conflicts.push(s);
+      });
+  });
+  if (conflicts.length > 0) {
+    const detail = conflicts.map(s => `• ${formatDate(s.date)} à ${s.heure} (${getPatientName(s.patientId, false)}, ${s.duree} min)`).join('\n');
+    if (!confirm(`⚠ Chevauchement détecté avec ${conflicts.length} séance(s) :\n${detail}\n\nContinuer quand même ?`)) return;
+  }
 
   if (id) {
     // Edition
@@ -504,13 +620,18 @@ function saveSeance() {
     if (idx > -1) { base.id = id; base.facture = DB.seances[idx].facture; DB.seances[idx] = base; }
   } else {
     // Nouvelle(s) séance(s)
-    const recur = document.getElementById('s-recurrence').checked;
     if (recur) {
-      const freq  = parseInt(document.getElementById('s-rec-freq').value)  || 7;
-      const count = parseInt(document.getElementById('s-rec-count').value) || 1;
-      for (let i = 0; i < count; i++) {
-        const s = { ...base, id: uid(), facture: null, date: addDays(date, freq * i) };
-        DB.seances.push(s);
+      const mode = getRecMode();
+      if (mode === 'jourhebdo') {
+        const dates = calcDatesJourHebdo(date);
+        if (dates.length === 0) { alert('Sélectionnez au moins un jour de semaine.'); return; }
+        dates.forEach(d => DB.seances.push({ ...base, id: uid(), facture: null, date: d }));
+      } else {
+        const freq2  = parseInt(document.getElementById('s-rec-freq').value)  || 7;
+        const count2 = parseInt(document.getElementById('s-rec-count').value) || 1;
+        for (let i = 0; i < count2; i++) {
+          DB.seances.push({ ...base, id: uid(), facture: null, date: addDays(date, freq2 * i) });
+        }
       }
     } else {
       base.id = uid(); base.facture = null;
@@ -682,21 +803,55 @@ function populateSelectPat(selId) {
 }
 
 function renderSeances() {
-  const st  = document.getElementById('filter-statut').value;
-  const pid = document.getElementById('filter-pat').value;
-  let list  = [...DB.seances].sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
-  if (st)  list = list.filter(s => s.statut === st);
-  if (pid) list = list.filter(s => s.patientId === pid);
+  const st   = document.getElementById('filter-statut').value;
+  const pid  = document.getElementById('filter-pat').value;
+  const fdat = document.getElementById('filter-date').value;
+  let list   = [...DB.seances].sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+  if (st)   list = list.filter(s => s.statut === st);
+  if (pid)  list = list.filter(s => s.patientId === pid);
+  if (fdat) list = list.filter(s => s.date === fdat);
+
+  // Insérer les blocs indisponibilités si pas de filtre spécial
+  const indisposDuFiltre = fdat
+    ? (DB.indisponibilites || []).filter(i => i.date === fdat)
+    : [];
+
   const el = document.getElementById('seances-list');
-  if (list.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="ei">◷</div><p>Aucune séance</p><button class="btn btn-primary" onclick="openModal('modal-seance')">+ Ajouter</button></div>`;
+  if (list.length === 0 && indisposDuFiltre.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="ei">◷</div><p>Aucune séance${fdat ? ' ce jour' : ''}</p><button class="btn btn-primary" onclick="openModal('modal-seance')">+ Ajouter</button></div>`;
     return;
   }
-  el.innerHTML = list.map(s => {
+
+  // Construire liste avec séparateurs de jour et blocs indisponibles
+  let html = '';
+  if (fdat && indisposDuFiltre.length > 0) {
+    indisposDuFiltre.forEach(i => {
+      html += `<div class="indispo-block">
+        <span>⛔ Indisponible${i.heureDebut ? ' ' + i.heureDebut + (i.heureFin ? '–' + i.heureFin : '') : ' — journée entière'}${i.motif ? ' · ' + i.motif : ''}</span>
+        <button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button>
+      </div>`;
+    });
+  }
+
+  let lastDate = null;
+  list.forEach(s => {
+    if (s.date !== lastDate) {
+      // Séparateur de date + indispos du jour si pas de filtre date
+      if (!fdat) {
+        const indisposJour = (DB.indisponibilites || []).filter(i => i.date === s.date);
+        indisposJour.forEach(i => {
+          html += `<div class="indispo-block">
+            <span>⛔ ${formatDate(s.date)} — Indisponible${i.heureDebut ? ' ' + i.heureDebut + (i.heureFin ? '–' + i.heureFin : '') : ' journée entière'}${i.motif ? ' · ' + i.motif : ''}</span>
+            <button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button>
+          </div>`;
+        });
+      }
+      lastDate = s.date;
+    }
     const pn = getPatientName(s.patientId);
     const d  = s.date.split('-');
     const mo = MOIS_SHORT[parseInt(d[1])-1];
-    return `<div class="rdv-item" onclick="viewSeance('${s.id}')">
+    html += `<div class="rdv-item" onclick="viewSeance('${s.id}')">
       <div class="rdv-date"><div class="day">${d[2]}</div><div class="month">${mo}</div></div>
       <div style="flex:1;">
         <div style="font-size:14px;font-weight:500;">${pn}</div>
@@ -707,11 +862,158 @@ function renderSeances() {
         <span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span>
       </div>
     </div>`;
-  }).join('');
+  });
+
+  // Indispos sans séance ce jour (si pas de filtre date)
+  if (!fdat) {
+    const datesAvecSeances = new Set(list.map(s => s.date));
+    (DB.indisponibilites || [])
+      .filter(i => !datesAvecSeances.has(i.date))
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .forEach(i => {
+        html += `<div class="indispo-block">
+          <span>⛔ ${formatDate(i.date)} — Indisponible${i.heureDebut ? ' ' + i.heureDebut + (i.heureFin ? '–' + i.heureFin : '') : ' journée entière'}${i.motif ? ' · ' + i.motif : ''}</span>
+          <button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button>
+        </div>`;
+      });
+  }
+
+  el.innerHTML = html;
+
+  // Résumé des règles récurrentes
+  const regles = DB.indisponibilites_regles || [];
+  const summaryEl = document.getElementById('indispo-regles-summary');
+  if (summaryEl) {
+    if (regles.length > 0) {
+      const jNoms = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
+      const freqLabel = f => f <= 1 ? 'toutes les semaines' : `1 semaine sur ${f}`;
+      summaryEl.innerHTML = `<div style="margin-top:1.5rem;"><div class="section-title" style="margin-bottom:.5rem;">Règles d'indisponibilité récurrentes</div>` +
+        regles.map(r => {
+          const jours   = r.jours.map(j => jNoms[j]).join(', ');
+          const horaire = r.heureDebut ? ` · ${r.heureDebut}${r.heureFin ? '–'+r.heureFin : ''}` : ' · journée entière';
+          const periode = `${formatDate(r.debut)}${r.fin ? ' → ' + formatDate(r.fin) : ' → indéfiniment'}`;
+          return `<div class="indispo-block">
+            <span>🔁 <strong>${jours}</strong>, ${freqLabel(r.freq)}${horaire}${r.motif ? ' · <em>' + r.motif + '</em>' : ''}<br>
+            <small style="color:var(--warm-mid);">${periode}</small></span>
+            <button class="btn btn-danger btn-xs" onclick="deleteIndispoRegle('${r.id}')">Supprimer</button>
+          </div>`;
+        }).join('') + '</div>';
+    } else {
+      summaryEl.innerHTML = '';
+    }
+  }
 }
 
-// ════════════════════════════════════════
-// FACTURES — Conformité 2026-2027
+function openModalIndispo() {
+  // reset
+  document.getElementById('indispo-date').value        = document.getElementById('filter-date').value || today();
+  document.getElementById('indispo-rec-debut').value   = today();
+  document.getElementById('indispo-rec-fin').value     = '';
+  document.getElementById('indispo-heure-debut').value = '';
+  document.getElementById('indispo-heure-fin').value   = '';
+  document.getElementById('indispo-motif').value       = '';
+  document.getElementById('indispo-journee').checked   = true;
+  document.getElementById('indispo-rec-freq').value    = '1';
+  document.querySelectorAll('#indispo-jours-semaine input').forEach(cb => cb.checked = false);
+  // reset tabs
+  switchIndispoType('ponctuelle', document.querySelector('#modal-indispo .tab-btn'));
+  toggleIndispoJournee();
+  document.getElementById('modal-indispo').classList.remove('hidden');
+}
+
+function switchIndispoType(type, btn) {
+  document.getElementById('indispo-tab-ponctuelle').style.display  = type === 'ponctuelle'  ? '' : 'none';
+  document.getElementById('indispo-tab-recurrente').style.display  = type === 'recurrente'  ? '' : 'none';
+  document.querySelectorAll('#modal-indispo .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function toggleIndispoJournee() {
+  const full = document.getElementById('indispo-journee').checked;
+  document.getElementById('indispo-créneau-group').style.display = full ? 'none' : 'flex';
+}
+
+function saveIndispo() {
+  const full      = document.getElementById('indispo-journee').checked;
+  const heureDebut = full ? null : document.getElementById('indispo-heure-debut').value;
+  const heureFin   = full ? null : document.getElementById('indispo-heure-fin').value;
+  const motif      = document.getElementById('indispo-motif').value.trim();
+  const isRec      = document.querySelector('#indispo-tab-recurrente').style.display !== 'none';
+
+  if (!DB.indisponibilites)        DB.indisponibilites        = [];
+  if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
+
+  if (isRec) {
+    // Règle récurrente
+    const jours = Array.from(document.querySelectorAll('#indispo-jours-semaine input:checked')).map(cb => parseInt(cb.value));
+    if (jours.length === 0) { alert('Sélectionnez au moins un jour.'); return; }
+    const debut = document.getElementById('indispo-rec-debut').value;
+    if (!debut) { alert('Date de début requise.'); return; }
+    DB.indisponibilites_regles.push({
+      id: uid(), jours, freq: parseInt(document.getElementById('indispo-rec-freq').value) || 1,
+      debut, fin: document.getElementById('indispo-rec-fin').value || null,
+      heureDebut, heureFin, motif
+    });
+    const nbJours = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
+    const label = jours.map(j => nbJours[j]).join(', ');
+    toast(`Règle récurrente enregistrée (${label}) ✓`, 'success');
+  } else {
+    // Ponctuelle
+    const date = document.getElementById('indispo-date').value;
+    if (!date) { alert('Date requise.'); return; }
+    DB.indisponibilites.push({ id: uid(), date, heureDebut, heureFin, motif });
+    toast('Indisponibilité enregistrée ✓', 'success');
+  }
+
+  dbSave();
+  document.getElementById('modal-indispo').classList.add('hidden');
+  renderSeances();
+  renderCalendar();
+}
+
+function deleteIndispo(id) {
+  if (!confirm('Supprimer cette indisponibilité ?')) return;
+  DB.indisponibilites = (DB.indisponibilites || []).filter(i => i.id !== id);
+  dbSave(); renderSeances(); renderCalendar();
+  toast('Indisponibilité supprimée');
+}
+
+function deleteIndispoRegle(id) {
+  if (!confirm('Supprimer cette règle récurrente ? Toutes les occurrences futures seront retirées.')) return;
+  DB.indisponibilites_regles = (DB.indisponibilites_regles || []).filter(r => r.id !== id);
+  dbSave(); renderSeances(); renderCalendar();
+  toast('Règle supprimée');
+}
+
+// Vérifie si une date (string YYYY-MM-DD) est couverte par les règles récurrentes
+// Retourne la règle ou null
+function getIndispoRegleForDate(dateStr) {
+  const rules = DB.indisponibilites_regles || [];
+  if (!rules.length) return null;
+  const d = new Date(dateStr);
+  const dowJS = d.getDay(); // 0=Di, 1=Lu…
+  // Référence : lundi de la semaine de début pour calculer parité de semaine
+  for (const r of rules) {
+    if (!r.jours.includes(dowJS)) continue;
+    if (dateStr < r.debut) continue;
+    if (r.fin && dateStr > r.fin) continue;
+    if (r.freq <= 1) return r;
+    // Calculer numéro de semaine depuis le début de la règle
+    const startD = new Date(r.debut);
+    const diffMs = d - startD;
+    const diffWeeks = Math.floor(diffMs / (7 * 86400000));
+    if (diffWeeks % r.freq === 0) return r;
+    // Aussi vérifier les semaines contenant la date de début même si le jour précède
+    // On compte la semaine ISO depuis le lundi de la semaine du debut
+    const startMonday = new Date(startD);
+    startMonday.setDate(startD.getDate() - ((startD.getDay() + 6) % 7));
+    const curMonday  = new Date(d);
+    curMonday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    const weeksDiff = Math.round((curMonday - startMonday) / (7 * 86400000));
+    if (weeksDiff % r.freq === 0) return r;
+  }
+  return null;
+}
 // ════════════════════════════════════════
 function initFactureModal() {
   populateSelectPat('f-patient');
@@ -778,10 +1080,10 @@ function genererFacture() {
   const ids    = Array.from(cbs).map(cb => cb.value);
   const seancesSelected = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
 
-  // Numérotation : ANNEE-JOURSEANCE-XX (numéro séquentiel sur 2 chiffres)
+  // Numérotation : ANNEE-MM-JJ-XX
   const firstSeanceDate = [...seancesSelected].sort((a,b) => a.date.localeCompare(b.date))[0]?.date || today();
-  const jourSeance = firstSeanceDate.replace(/-/g, '');
-  const num   = yr + '-' + jourSeance + '-' + String(DB.nextNum).padStart(2, '0');
+  const [fsYear, fsMois, fsJour] = firstSeanceDate.split('-');
+  const num   = fsYear + '-' + fsMois + '-' + fsJour + '-' + String(DB.nextNum).padStart(2, '0');
   DB.nextNum++;
 
   const seances = seancesSelected;
@@ -1123,19 +1425,50 @@ function renderCalendar() {
   document.getElementById('cal-title').textContent = MOIS_NOMS[mo] + ' ' + yr;
   const fo  = (new Date(yr, mo, 1).getDay() + 6) % 7;
   const dim = new Date(yr, mo + 1, 0).getDate();
-  const rdv = new Set(
-    DB.seances
-      .filter(s => { const d = new Date(s.date); return d.getMonth() === mo && d.getFullYear() === yr; })
-      .map(s => parseInt(s.date.split('-')[2]))
+
+  // Map jour -> séances de ce jour
+  const rdvMap = {};
+  DB.seances
+    .filter(s => { const d = new Date(s.date); return d.getMonth() === mo && d.getFullYear() === yr; })
+    .forEach(s => {
+      const j = parseInt(s.date.split('-')[2]);
+      if (!rdvMap[j]) rdvMap[j] = [];
+      rdvMap[j].push(s);
+    });
+
+  // Jours indisponibles de ce mois (ponctuels)
+  const indispoSet = new Set(
+    (DB.indisponibilites || [])
+      .filter(i => i.date.startsWith(yr + '-' + String(mo + 1).padStart(2,'0')))
+      .map(i => parseInt(i.date.split('-')[2]))
   );
+  // Jours couverts par les règles récurrentes
+  for (let d = 1; d <= dim; d++) {
+    const dateStr = yr + '-' + String(mo + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    if (getIndispoRegleForDate(dateStr)) indispoSet.add(d);
+  }
+
   const dn = ['Lu','Ma','Me','Je','Ve','Sa','Di'];
   let h = dn.map(d => `<div class="cal-day-name">${d}</div>`).join('');
   for (let i = 0; i < fo; i++) h += '<div class="cal-day empty"></div>';
   for (let d = 1; d <= dim; d++) {
-    const it = d === todayD.getDate() && mo === todayD.getMonth() && yr === todayD.getFullYear();
-    h += `<div class="cal-day${it ? ' today' : ''}${rdv.has(d) ? ' has-rdv' : ''}">${d}</div>`;
+    const it      = d === todayD.getDate() && mo === todayD.getMonth() && yr === todayD.getFullYear();
+    const hasRdv  = !!rdvMap[d];
+    const isIndi  = indispoSet.has(d);
+    const dateStr = yr + '-' + String(mo + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const clickable = hasRdv ? `onclick="goToSeancesByDate('${dateStr}')" title="${rdvMap[d].length} séance(s)"` : '';
+    h += `<div class="cal-day${it ? ' today' : ''}${hasRdv ? ' has-rdv' : ''}${isIndi ? ' is-indispo' : ''}${hasRdv ? ' clickable' : ''}" ${clickable}>${d}</div>`;
   }
   document.getElementById('calendar').innerHTML = h;
+}
+
+function goToSeancesByDate(dateStr) {
+  // Naviguer vers la page Séances avec filtre date
+  const btn = document.querySelectorAll('.nav-btn')[2]; // bouton Séances
+  showPage('seances', btn);
+  // Appliquer le filtre date
+  document.getElementById('filter-date').value = dateStr;
+  renderSeances();
 }
 
 function renderUpcoming() {
