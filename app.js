@@ -67,8 +67,237 @@ function getPatientName(id, upper = true) {
 }
 
 // ════════════════════════════════════════
-// CONFIG / SETUP
+// GOOGLE CALENDAR
 // ════════════════════════════════════════
+const GCAL_SCOPES   = 'https://www.googleapis.com/auth/calendar.events';
+const GCAL_API_BASE = 'https://www.googleapis.com/calendar/v3';
+
+let _gcalToken = null;
+
+function gcalToken() { return _gcalToken || localStorage.getItem('psy-gcal-token'); }
+function gcalSaveToken(t) { _gcalToken = t; localStorage.setItem('psy-gcal-token', t); }
+function gcalClearToken() { _gcalToken = null; localStorage.removeItem('psy-gcal-token'); }
+
+function saveGcalClientId() {
+  const id = document.getElementById('s-gcal-client-id').value.trim();
+  if (!id) { alert('Client ID requis.'); return; }
+  CFG.gcalClientId = id;
+  cfgSave();
+  document.getElementById('gcal-config').style.display = 'none';
+  document.getElementById('gcal-setup-link').style.display = '';
+  renderGcalStatus();
+  toast('Client ID enregistré ✓', 'success');
+}
+
+function renderGcalStatus() {
+  const box = document.getElementById('gcal-status-box');
+  const act = document.getElementById('gcal-actions');
+  const lnk = document.getElementById('gcal-setup-link');
+  if (!box) return;
+
+  const token = gcalToken();
+  const hasClientId = !!CFG.gcalClientId;
+
+  if (token) {
+    box.innerHTML = `<div class="info-box sage">
+      <strong>✓ Connecté à Google Agenda</strong><br>
+      Les séances planifiées sont synchronisables avec votre calendrier Google.
+    </div>`;
+    if (act) act.style.display = '';
+    if (lnk) lnk.style.display = 'none';
+  } else if (hasClientId) {
+    box.innerHTML = `<div class="info-box terra">
+      <strong>Non connecté</strong> — Cliquez ci-dessous pour autoriser l'accès à Google Agenda.
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:.5rem;" onclick="gcalConnect()">🔗 Connecter Google Agenda</button>`;
+    if (act) act.style.display = 'none';
+    if (lnk) lnk.style.display = '';
+  } else {
+    box.innerHTML = `<div style="font-size:13px;color:var(--warm-mid);line-height:1.6;">
+      Synchronisez vos séances avec Google Agenda. Configurez d'abord votre Client ID OAuth ci-dessous.
+    </div>`;
+    if (act) act.style.display = 'none';
+    if (lnk) lnk.style.display = '';
+  }
+}
+
+function gcalConnect() {
+  const clientId = CFG.gcalClientId;
+  if (!clientId) { alert('Configurez d\'abord votre Client ID.'); return; }
+  const redirect = location.origin + location.pathname;
+  const state    = 'gcal-' + Date.now();
+  sessionStorage.setItem('gcal-state', state);
+
+  const params = new URLSearchParams({
+    client_id:     clientId,
+    redirect_uri:  redirect,
+    response_type: 'token',
+    scope:         GCAL_SCOPES,
+    state,
+    prompt:        'select_account'
+  });
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+}
+
+// Capturer le token au retour OAuth (fragment URL)
+(function catchOAuthCallback() {
+  const hash = location.hash;
+  if (!hash.includes('access_token')) return;
+  const params   = new URLSearchParams(hash.slice(1));
+  const token    = params.get('access_token');
+  const state    = params.get('state');
+  const expected = sessionStorage.getItem('gcal-state');
+  if (!token) return;
+  if (expected && state !== expected) { console.warn('État OAuth invalide'); return; }
+  gcalSaveToken(token);
+  sessionStorage.removeItem('gcal-state');
+  // Nettoyer l'URL
+  history.replaceState(null, '', location.pathname);
+  toast('Google Agenda connecté ✓', 'success');
+})();
+
+function gcalDisconnect() {
+  if (!confirm('Déconnecter Google Agenda ? Les séances déjà synchronisées resteront dans votre calendrier.')) return;
+  gcalClearToken();
+  renderGcalStatus();
+  toast('Déconnecté de Google Agenda');
+}
+
+async function gcalApi(method, path, body) {
+  const token = gcalToken();
+  if (!token) throw new Error('Non authentifié');
+  const res = await fetch(GCAL_API_BASE + path, {
+    method,
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type':  'application/json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (res.status === 401) { gcalClearToken(); renderGcalStatus(); throw new Error('Session expirée — reconnectez-vous.'); }
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || 'Erreur API'); }
+  return res.status === 204 ? null : res.json();
+}
+
+function seanceToGcalEvent(s) {
+  const p     = DB.patients.find(p => p.id === s.patientId);
+  const pName = p ? p.prenom + ' ' + p.nom : 'Patient';
+  const [h, m] = s.heure.split(':').map(Number);
+  const start  = new Date(s.date + 'T' + s.heure + ':00');
+  const end    = new Date(start.getTime() + s.duree * 60000);
+  const toISO  = d => d.toISOString();
+  return {
+    summary:     'Séance — ' + pName,
+    description: [
+      'Durée : ' + s.duree + ' min',
+      'Tarif : ' + s.tarif + ' €',
+      s.notes ? 'Notes : ' + s.notes : ''
+    ].filter(Boolean).join('\n'),
+    start: { dateTime: toISO(start), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    end:   { dateTime: toISO(end),   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    extendedProperties: { private: { psySeanceId: s.id } }
+  };
+}
+
+async function gcalSync() {
+  const log = document.getElementById('gcal-sync-log');
+  if (log) log.textContent = '⏳ Synchronisation en cours…';
+  try {
+    const seances = DB.seances.filter(s => s.statut === 'planifié' || s.statut === 'honoré');
+    let created = 0, updated = 0, errors = 0;
+
+    for (const s of seances) {
+      const event = seanceToGcalEvent(s);
+      try {
+        if (s.gcalEventId) {
+          await gcalApi('PUT', '/calendars/primary/events/' + s.gcalEventId, event);
+          updated++;
+        } else {
+          const created_ev = await gcalApi('POST', '/calendars/primary/events', event);
+          s.gcalEventId = created_ev.id;
+          created++;
+        }
+      } catch(e) {
+        // Si l'event n'existe plus, recréer
+        if (s.gcalEventId && e.message.includes('404')) {
+          try {
+            const created_ev = await gcalApi('POST', '/calendars/primary/events', event);
+            s.gcalEventId = created_ev.id;
+            created++;
+          } catch(_) { errors++; }
+        } else { errors++; }
+      }
+    }
+    dbSave();
+    const msg = `✓ ${created} créé(s), ${updated} mis à jour${errors ? ', ' + errors + ' erreur(s)' : ''}`;
+    if (log) log.textContent = msg;
+    toast('Google Agenda synchronisé ✓', 'success');
+  } catch(e) {
+    if (log) log.textContent = '✕ Erreur : ' + e.message;
+    toast('Erreur sync : ' + e.message, 'danger');
+  }
+}
+
+// Synchronisation auto d'une séance individuelle (appelée après saveSeance)
+async function gcalSyncSeance(seanceId) {
+  if (!gcalToken()) return;
+  const s = DB.seances.find(s => s.id === seanceId); if (!s) return;
+  if (s.statut === 'annulé' && s.gcalEventId) {
+    try { await gcalApi('DELETE', '/calendars/primary/events/' + s.gcalEventId); s.gcalEventId = null; dbSave(); } catch(_) {}
+    return;
+  }
+  if (s.statut !== 'planifié' && s.statut !== 'honoré') return;
+  try {
+    const event = seanceToGcalEvent(s);
+    if (s.gcalEventId) {
+      await gcalApi('PUT', '/calendars/primary/events/' + s.gcalEventId, event);
+    } else {
+      const ev = await gcalApi('POST', '/calendars/primary/events', event);
+      s.gcalEventId = ev.id;
+    }
+    dbSave();
+  } catch(_) {}
+}
+function handleLogoUpload(pfx) {
+  const input = document.getElementById(pfx + '-logo-input');
+  const file  = input.files[0];
+  if (!file) return;
+  if (file.size > 500 * 1024) { alert('Logo trop volumineux (max 500 Ko).'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result;
+    CFG.logo = b64;
+    cfgSave();
+    applyLogoPreview(pfx, b64);
+    toast('Logo enregistré ✓', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyLogoPreview(pfx, src) {
+  const img  = document.getElementById(pfx + '-logo-preview');
+  const ph   = document.getElementById(pfx + '-logo-placeholder');
+  const rm   = document.getElementById(pfx + '-logo-remove');
+  if (src) {
+    img.src = src; img.style.display = 'block';
+    ph.style.display = 'none'; rm.style.display = 'inline-flex';
+  } else {
+    img.src = ''; img.style.display = 'none';
+    ph.style.display = ''; rm.style.display = 'none';
+  }
+}
+
+function removeLogo(pfx) {
+  CFG.logo = '';
+  cfgSave();
+  applyLogoPreview(pfx, '');
+  document.getElementById(pfx + '-logo-input').value = '';
+  toast('Logo supprimé');
+}
+
+function loadLogoPreview() {
+  if (CFG.logo) { applyLogoPreview('s', CFG.logo); applyLogoPreview('c', CFG.logo); }
+}
 function isConfigured() { return !!(CFG.prenom && CFG.nom && CFG.siret); }
 
 function toggleTvaCustom(pfx) {
@@ -146,6 +375,10 @@ function loadSettingsForm() {
     document.getElementById('s-tva-custom').value = CFG.tvaMention;
     document.getElementById('s-tva-custom-group').style.display = 'block';
   }
+  const clientIdEl = document.getElementById('s-gcal-client-id');
+  if (clientIdEl && CFG.gcalClientId) clientIdEl.value = CFG.gcalClientId;
+  loadLogoPreview();
+  renderGcalStatus();
 }
 
 function updateHeader() {
@@ -643,6 +876,12 @@ function saveSeance() {
 
   dbSave();
   closeModal('modal-seance');
+
+  // Sync Google Agenda si connecté
+  if (gcalToken()) {
+    const ids = DB.seances.filter(s => !s.gcalEventId && (s.statut === 'planifié' || s.statut === 'honoré')).map(s => s.id);
+    ids.forEach(id => gcalSyncSeance(id));
+  }
 
   if (returnTo) {
     viewPatient(returnTo);
@@ -1192,11 +1431,14 @@ function buildInvoice(f) {
 
   return `<div class="invoice-preview" id="printable-invoice">
     <div class="inv-header">
-      <div>
-        <div class="inv-logo-name">${CFG.prenom} ${CFG.nom.toUpperCase()}</div>
-        <div class="inv-logo-sub">${CFG.titre || 'Psychothérapeute'}${CFG.formation ? ' · ' + CFG.formation : ''}</div>
-        <div style="margin-top:.75rem;font-size:12px;color:var(--warm-mid);line-height:1.7;">
-          ${adr}${CFG.tel ? '<br>' + CFG.tel : ''}${CFG.email ? '<br>' + CFG.email : ''}
+      <div style="display:flex;align-items:flex-start;gap:1rem;">
+        ${CFG.logo ? `<img src="${CFG.logo}" alt="Logo" style="max-height:72px;max-width:160px;object-fit:contain;border-radius:4px;flex-shrink:0;">` : ''}
+        <div>
+          <div class="inv-logo-name">${CFG.prenom} ${CFG.nom.toUpperCase()}</div>
+          <div class="inv-logo-sub">${CFG.titre || 'Psychothérapeute'}${CFG.formation ? ' · ' + CFG.formation : ''}</div>
+          <div style="margin-top:.75rem;font-size:12px;color:var(--warm-mid);line-height:1.7;">
+            ${adr}${CFG.tel ? '<br>' + CFG.tel : ''}${CFG.email ? '<br>' + CFG.email : ''}
+          </div>
         </div>
       </div>
       <div class="inv-num-block" style="text-align:right;">
@@ -1525,8 +1767,6 @@ function showCaModal() {
   `;
   document.getElementById('modal-ca').classList.remove('hidden');
 }
-
-function showAFacturerModal() {
   const seances = DB.seances
     .filter(s => (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
     .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
@@ -1647,9 +1887,11 @@ dbLoad();
 if (isConfigured()) {
   document.getElementById('setup-screen').classList.add('hidden');
   updateHeader();
+  loadLogoPreview();
   renderDashboard();
 } else {
   document.getElementById('setup-screen').classList.remove('hidden');
+  loadLogoPreview();
 }
 
 // PWA manifest

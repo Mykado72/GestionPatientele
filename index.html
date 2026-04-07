@@ -25,6 +25,18 @@
     </div>
     <p class="setup-intro">Bienvenue ! Renseignez vos informations professionnelles. Elles apparaîtront sur vos factures et resteront stockées uniquement sur cet appareil.</p>
 
+    <div class="setup-section">Logo du cabinet</div>
+    <div class="form-group">
+      <label>Logo (optionnel)</label>
+      <div class="logo-upload-zone" id="c-logo-zone" onclick="document.getElementById('c-logo-input').click()">
+        <img id="c-logo-preview" src="" alt="" style="display:none;max-height:80px;max-width:200px;border-radius:6px;">
+        <span id="c-logo-placeholder">📷 Cliquer pour ajouter un logo (PNG, JPG, SVG)</span>
+      </div>
+      <input type="file" id="c-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('c')">
+      <button class="btn btn-secondary btn-sm" id="c-logo-remove" style="display:none;margin-top:.4rem;" onclick="removeLogo('c')">✕ Supprimer le logo</button>
+      <div class="form-hint">Apparaîtra en haut à gauche de vos factures</div>
+    </div>
+
     <div class="setup-section">Identité professionnelle</div>
     <div class="form-row">
       <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="c-prenom" placeholder="Prénom"></div>
@@ -230,6 +242,48 @@
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="exportData()">⬇ Exporter les données</button>
           <button class="btn btn-secondary" onclick="importData()">⬆ Importer des données</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Logo du cabinet</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+          <div class="logo-upload-zone" id="s-logo-zone" onclick="document.getElementById('s-logo-input').click()" style="min-width:160px;">
+            <img id="s-logo-preview" src="" alt="" style="display:none;max-height:72px;max-width:180px;border-radius:6px;">
+            <span id="s-logo-placeholder">📷 Cliquer pour ajouter</span>
+          </div>
+          <input type="file" id="s-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('s')">
+          <div style="flex:1;">
+            <p style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:.5rem;">Le logo apparaîtra en haut à gauche de vos factures. Formats acceptés : PNG, JPG, SVG. Taille recommandée : 300×120 px.</p>
+            <button class="btn btn-secondary btn-sm" id="s-logo-remove" style="display:none;" onclick="removeLogo('s')">✕ Supprimer le logo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Google Agenda</div>
+      <div class="card">
+        <div id="gcal-status-box" style="margin-bottom:1rem;"></div>
+        <div id="gcal-config" style="display:none;">
+          <div class="form-group">
+            <label>Client ID Google OAuth 2.0</label>
+            <input type="text" id="s-gcal-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com">
+            <div class="form-hint">Créez vos identifiants dans la <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--sage-dark);">Google Cloud Console</a> → API &amp; Services → Identifiants → Client OAuth (type : Application Web). Ajoutez <code style="font-size:11px;background:var(--beige);padding:1px 4px;border-radius:3px;">${location.origin}</code> comme origine autorisée.</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveGcalClientId()">Enregistrer le Client ID</button>
+        </div>
+        <div id="gcal-actions" style="display:none;margin-top:.75rem;">
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="gcalSync()">🔄 Synchroniser les séances</button>
+            <button class="btn btn-secondary btn-sm" onclick="gcalDisconnect()">Déconnecter</button>
+          </div>
+          <div id="gcal-sync-log" style="margin-top:.75rem;font-size:12px;color:var(--warm-mid);"></div>
+        </div>
+        <div id="gcal-setup-link" style="margin-top:.75rem;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('gcal-config').style.display='block';this.style.display='none';">⚙ Configurer le Client ID</button>
         </div>
       </div>
     </div>
