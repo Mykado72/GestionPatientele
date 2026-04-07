@@ -1767,6 +1767,8 @@ function showCaModal() {
   `;
   document.getElementById('modal-ca').classList.remove('hidden');
 }
+
+function showAFacturerModal() {
   const seances = DB.seances
     .filter(s => (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
     .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
