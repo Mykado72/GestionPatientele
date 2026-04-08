@@ -1928,23 +1928,21 @@ function renderUpcoming() {
 // ════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════
-dbLoad();
+document.addEventListener('DOMContentLoaded', () => {
+    dbLoad();
 
-if (isConfigured()) {
-  document.getElementById('setup-screen').classList.add('hidden');
-  updateHeader();
-  loadLogoPreview();
-  renderDashboard();
-} else {
-  document.getElementById('setup-screen').classList.remove('hidden');
-  loadLogoPreview();
-}
+    if (isConfigured()) {
+        const setupScreen = document.getElementById('setup-screen');
+        if (setupScreen) setupScreen.classList.add('hidden');
+        updateHeader();
+        loadLogoPreview();
+        renderDashboard();
+    } else {
+        const setupScreen = document.getElementById('setup-screen');
+        if (setupScreen) setupScreen.classList.remove('hidden');
+        loadLogoPreview();
+    }
 
-// PWA manifest
-const _manifest = {
-  name: 'Cabinet Psychothérapie', short_name: 'Cabinet Psy',
-  start_url: '.', display: 'standalone',
-  background_color: '#f7f3ee', theme_color: '#6b8f71'
-};
-const _blob = new Blob([JSON.stringify(_manifest)], { type: 'application/manifest+json' });
-document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(_blob));
+    // Initialisation de l'état Google Agenda si présent
+    if (typeof renderGcalStatus === 'function') renderGcalStatus();
+});
