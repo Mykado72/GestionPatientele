@@ -254,7 +254,7 @@
             <img id="s-logo-preview" src="" alt="" style="display:none;max-height:72px;max-width:180px;border-radius:6px;">
             <span id="s-logo-placeholder">📷 Cliquer pour ajouter</span>
           </div>
-          <input type="file" id="s-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('s')">
+          <input type="file" id="s-logo-input" accept="image/*" style="display:none;" onchange="uploadLogo('s')">
           <div style="flex:1;">
             <p style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:.5rem;">Le logo apparaîtra en haut à gauche de vos factures. Formats acceptés : PNG, JPG, SVG. Taille recommandée : 300×120 px.</p>
             <button class="btn btn-secondary btn-sm" id="s-logo-remove" style="display:none;" onclick="removeLogo('s')">✕ Supprimer le logo</button>
