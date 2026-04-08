@@ -309,19 +309,21 @@ async function gcalLoadCalendarsAndPatients() {
     toast(e.message, 'danger');
   }
 }
-  const input = document.getElementById(pfx + '-logo-input');
-  const file  = input.files[0];
-  if (!file) return;
-  if (file.size > 500 * 1024) { alert('Logo trop volumineux (max 500 Ko).'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    const b64 = e.target.result;
-    CFG.logo = b64;
-    cfgSave();
-    applyLogoPreview(pfx, b64);
-    toast('Logo enregistré ✓', 'success');
-  };
-  reader.readAsDataURL(file);
+function uploadLogo(pfx) {
+    const input = document.getElementById(pfx + '-logo-input');
+    if (!input || !input.files) return;
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) { alert('Logo trop volumineux (max 500 Ko).'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const b64 = e.target.result;
+        CFG.logo = b64;
+        cfgSave();
+        applyLogoPreview(pfx, b64);
+        toast('Logo enregistré ✓', 'success');
+    };
+    reader.readAsDataURL(file);
 }
 
 function applyLogoPreview(pfx, src) {
