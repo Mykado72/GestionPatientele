@@ -25,15 +25,14 @@
     </div>
     <p class="setup-intro">Bienvenue ! Renseignez vos informations professionnelles. Elles apparaîtront sur vos factures et resteront stockées uniquement sur cet appareil.</p>
 
-    <div class="setup-section">Logo du cabinet</div>
+    <div class="setup-section">Logo du cabinet (optionnel)</div>
     <div class="form-group">
-      <label>Logo (optionnel)</label>
       <div class="logo-upload-zone" onclick="document.getElementById('c-logo-input').click()">
-        <img id="c-logo-preview" src="" alt="" style="display:none;max-height:72px;max-width:200px;object-fit:contain;border-radius:4px;">
+        <img id="c-logo-preview" src="" alt="" style="display:none;max-height:72px;max-width:200px;object-fit:contain;">
         <span id="c-logo-placeholder">📷 Cliquer pour ajouter un logo (PNG, JPG, SVG — max 500 Ko)</span>
       </div>
       <input type="file" id="c-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('c')">
-      <button class="btn btn-secondary btn-sm" id="c-logo-remove" style="display:none;margin-top:.4rem;" onclick="removeLogo('c')">✕ Supprimer le logo</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="c-logo-remove" style="display:none;margin-top:.4rem;" onclick="removeLogo('c')">✕ Supprimer</button>
       <div class="form-hint">Apparaîtra en haut à gauche de vos factures.</div>
     </div>
 
@@ -331,17 +330,14 @@
       <div class="settings-section-title">Logo du cabinet</div>
       <div class="card">
         <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
-          <div class="logo-upload-zone" style="min-width:160px;" onclick="document.getElementById('s-logo-input').click()">
-            <img id="s-logo-preview" src="" alt="" style="display:none;max-height:64px;max-width:160px;object-fit:contain;border-radius:4px;">
+          <div class="logo-upload-zone" style="min-width:160px;flex-shrink:0;" onclick="document.getElementById('s-logo-input').click()">
+            <img id="s-logo-preview" src="" alt="" style="display:none;max-height:64px;max-width:160px;object-fit:contain;">
             <span id="s-logo-placeholder">📷 Cliquer pour ajouter</span>
           </div>
           <input type="file" id="s-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('s')">
           <div style="flex:1;">
-            <p style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:.5rem;">
-              Le logo apparaît en haut à gauche de vos factures.<br>
-              Formats acceptés : PNG, JPG, SVG — taille max 500 Ko.
-            </p>
-            <button class="btn btn-secondary btn-sm" id="s-logo-remove" style="display:none;" onclick="removeLogo('s')">✕ Supprimer le logo</button>
+            <p style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:.5rem;">Affiché en haut à gauche des factures. PNG, JPG ou SVG, max 500 Ko.</p>
+            <button type="button" class="btn btn-secondary btn-sm" id="s-logo-remove" style="display:none;" onclick="removeLogo('s')">✕ Supprimer le logo</button>
           </div>
         </div>
       </div>

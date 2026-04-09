@@ -164,6 +164,11 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .invoice-row:last-child { border-bottom: none; }
 .invoice-row:hover { background: var(--sage-pale); }
 
+/* ── Logo upload ── */
+.logo-upload-zone { display:flex; align-items:center; justify-content:center; min-height:88px; border:2px dashed var(--beige-mid); border-radius:var(--radius-sm); padding:.75rem 1rem; cursor:pointer; background:var(--beige); transition:var(--t); }
+.logo-upload-zone:hover { border-color:var(--sage-light); background:var(--sage-pale); }
+.logo-upload-zone span  { font-size:13px; color:var(--warm-mid); text-align:center; pointer-events:none; }
+
 /* ── Invoice preview ── */
 .invoice-preview { background: var(--white); border-radius: var(--radius); border: 1px solid var(--beige-mid); padding: 2rem; font-family: var(--font-sans); }
 .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
@@ -186,7 +191,6 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .inv-legal { font-size: 11px; color: var(--warm-mid); background: var(--beige); padding: .6rem .85rem; border-radius: 4px; margin-bottom: 1rem; line-height: 1.6; }
 .inv-payment-block { background: var(--sage-pale); border: 1px solid var(--sage-light); border-radius: var(--radius-sm); padding: .75rem 1rem; font-size: 12px; margin-bottom: 1rem; line-height: 1.7; }
 .inv-payment-block strong { color: var(--sage-dark); }
-.inv-footer { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--beige-mid); font-size: 11px; color: var(--warm-mid); line-height: 1.7; }
 
 /* ── Calendar ── */
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: .75rem; }
