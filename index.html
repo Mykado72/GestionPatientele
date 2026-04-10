@@ -809,26 +809,33 @@
 
 <!-- ── Modal Import Google Agenda ── -->
 <div class="modal-overlay hidden" id="modal-gcal-import">
-  <div class="modal" style="max-width:720px;">
+  <div class="modal" style="max-width:680px;">
     <button class="modal-close" onclick="closeModal('modal-gcal-import')">✕</button>
     <h2 class="modal-title">📅 Importer depuis Google Agenda</h2>
 
     <!-- Étape 1 : choix du calendrier + plage -->
     <div id="gcal-step-calendars">
-      <div class="form-row">
+      <p style="font-size:13px;color:var(--warm-mid);margin-bottom:1rem;line-height:1.5;">
+        Choisissez le calendrier à importer, puis la période souhaitée.
+      </p>
+
+      <div class="form-group">
+        <label style="font-weight:500;">Calendrier <span class="req">*</span></label>
+        <div id="gcal-cal-cards" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.4rem;max-height:240px;overflow-y:auto;"></div>
+        <input type="hidden" id="gcal-cal-select">
+      </div>
+
+      <div class="form-row" style="margin-top:.75rem;">
         <div class="form-group">
-          <label>Calendrier</label>
-          <select id="gcal-cal-select" style="font-size:13px;"></select>
-        </div>
-        <div class="form-group">
-          <label>Du</label>
+          <label>Du <span class="req">*</span></label>
           <input type="date" id="gcal-date-from">
         </div>
         <div class="form-group">
-          <label>Au</label>
+          <label>Au <span class="req">*</span></label>
           <input type="date" id="gcal-date-to">
         </div>
       </div>
+
       <div class="modal-actions" style="padding-top:0;">
         <button class="btn btn-secondary" onclick="closeModal('modal-gcal-import')">Annuler</button>
         <button class="btn btn-primary" onclick="gcalLoadEvents()">Charger les événements →</button>

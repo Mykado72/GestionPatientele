@@ -409,7 +409,6 @@ async function gcalFetch(path) {
 
 // Ouvre le panneau d'import Google Agenda
 async function openGcalImportPanel() {
-  // Charger la liste des calendriers
   const log = document.getElementById('gcal-import-log');
   document.getElementById('modal-gcal-import').classList.remove('hidden');
   document.getElementById('gcal-step-calendars').style.display = '';
@@ -418,25 +417,64 @@ async function openGcalImportPanel() {
 
   try {
     const data = await gcalFetch('/users/me/calendarList');
-    const cals  = (data.items || []).filter(c => c.accessRole !== 'freeBusyReader');
-    const sel   = document.getElementById('gcal-cal-select');
-    sel.innerHTML = cals.map(c =>
-      `<option value="${escAttr(c.id)}"${c.primary ? ' selected' : ''}>${escAttr(c.summary)}${c.primary ? ' (principal)' : ''}</option>`
-    ).join('');
-    if (log) log.textContent = `${cals.length} calendrier(s) disponible(s). Choisissez une plage.`;
+
+    // Filtrer les calendriers utiles : exclure anniversaires, fériés, contacts
+    const EXCLUS = ['#holiday', '#contacts', '#birthdays'];
+    const cals   = (data.items || []).filter(c =>
+      c.accessRole !== 'freeBusyReader' &&
+      !EXCLUS.some(x => (c.id || '').includes(x))
+    );
+
+    // Trier : principal en premier, puis alphabétique
+    cals.sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0) || (a.summary || '').localeCompare(b.summary || ''));
+
+    const lastUsed = CFG.gcalCalendarId || '';
+    const cards    = document.getElementById('gcal-cal-cards');
+
+    cards.innerHTML = cals.map(c => {
+      const color    = c.backgroundColor || '#6b8f71';
+      const isSelected = c.id === lastUsed || (!lastUsed && c.primary);
+      return `<label class="gcal-cal-card${isSelected ? ' selected' : ''}" onclick="selectGcalCal(this, '${escAttr(c.id)}')">
+        <input type="radio" name="gcal-cal" value="${escAttr(c.id)}" ${isSelected ? 'checked' : ''} style="display:none;">
+        <span class="gcal-cal-dot" style="background:${color};"></span>
+        <span class="gcal-cal-name">${escHtml(c.summary)}</span>
+        ${c.primary ? '<span class="gcal-cal-badge">Principal</span>' : ''}
+        ${c.description ? `<span class="gcal-cal-desc">${escHtml(c.description)}</span>` : ''}
+      </label>`;
+    }).join('');
+
+    // Pré-sélectionner le calendrier dans le champ caché
+    const presel = cals.find(c => c.id === lastUsed) || cals.find(c => c.primary) || cals[0];
+    if (presel) document.getElementById('gcal-cal-select').value = presel.id;
+
+    if (log) log.textContent = `${cals.length} calendrier(s) trouvé(s).`;
   } catch (e) {
     if (log) log.textContent = '✕ ' + e.message;
   }
 }
 
+function selectGcalCal(label, calId) {
+  // Mettre à jour la sélection visuelle
+  document.querySelectorAll('.gcal-cal-card').forEach(l => l.classList.remove('selected'));
+  label.classList.add('selected');
+  document.getElementById('gcal-cal-select').value = calId;
+}
+
 function escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
 async function gcalLoadEvents() {
-  const calId  = encodeURIComponent(document.getElementById('gcal-cal-select').value || 'primary');
-  const from   = document.getElementById('gcal-date-from').value;
-  const to     = document.getElementById('gcal-date-to').value;
-  const log    = document.getElementById('gcal-import-log');
+  const calId = document.getElementById('gcal-cal-select').value;
+  const from  = document.getElementById('gcal-date-from').value;
+  const to    = document.getElementById('gcal-date-to').value;
+  const log   = document.getElementById('gcal-import-log');
+
+  if (!calId) { alert('Sélectionnez un calendrier.'); return; }
   if (!from || !to) { alert('Sélectionnez une plage de dates.'); return; }
+  if (from > to)    { alert('La date de début doit être avant la date de fin.'); return; }
+
+  // Mémoriser le calendrier choisi pour la prochaine fois
+  CFG.gcalCalendarId = calId;
+  cfgSave();
 
   if (log) log.textContent = '⏳ Chargement des événements…';
   try {
@@ -445,12 +483,14 @@ async function gcalLoadEvents() {
       timeMax:      new Date(to + 'T23:59:59').toISOString(),
       singleEvents: 'true', orderBy: 'startTime', maxResults: '500'
     });
-    const data   = await gcalFetch(`/calendars/${calId}/events?${params}`);
-    const events = (data.items || []).filter(e => e.start?.dateTime); // exclure journées entières
+    const data   = await gcalFetch(`/calendars/${encodeURIComponent(calId)}/events?${params}`);
+    const events = (data.items || []).filter(e => e.start?.dateTime);
 
-    if (!events.length) { if (log) log.textContent = 'Aucun événement avec horaire dans cette période.'; return; }
+    if (!events.length) {
+      if (log) log.textContent = 'Aucun événement avec horaire dans cette période.';
+      return;
+    }
 
-    // Construire les propositions de rapprochement
     buildRapprochement(events);
     document.getElementById('gcal-step-calendars').style.display = 'none';
     document.getElementById('gcal-step-events').style.display    = '';
@@ -585,6 +625,8 @@ function getMatchScore(titre, p) {
   if (nom.length >= 2 && prenom.length >= 2 && (t.includes(prenom + ' ' + nom) || t.includes(nom + ' ' + prenom))) return 2;
   if (nom.length >= 3 && tWords.has(nom)) return 1;
   return 0;
+}
+  document.querySelectorAll('.gcal-cb:not(:disabled)').forEach(cb => cb.checked = checked);
 }
 
 function gcalConfirmImport() {

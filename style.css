@@ -231,11 +231,15 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .gcal-row-done { opacity: .5; background: var(--beige); }
 #gcal-events-tbody tr { border-bottom: 1px solid var(--beige-mid); }
 #gcal-events-tbody td { padding: .5rem .6rem; vertical-align: middle; }
+.gcal-cal-card { display: flex; align-items: center; gap: .65rem; padding: .65rem .85rem; border: 1.5px solid var(--beige-mid); border-radius: var(--radius-sm); cursor: pointer; transition: var(--t); flex-wrap: wrap; }
+.gcal-cal-card:hover    { border-color: var(--sage-light); background: var(--sage-pale); }
+.gcal-cal-card.selected { border-color: var(--sage); background: var(--sage-pale); box-shadow: 0 0 0 2px var(--sage-light); }
+.gcal-cal-dot   { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+.gcal-cal-name  { font-size: 14px; font-weight: 500; flex: 1; }
+.gcal-cal-badge { font-size: 10px; font-weight: 500; color: var(--sage-dark); background: var(--sage-pale); border: 1px solid var(--sage-light); border-radius: 10px; padding: 1px 6px; }
+.gcal-cal-desc  { font-size: 11px; color: var(--warm-mid); width: 100%; padding-left: 1.7rem; }
 
-/* ── Google Agenda import ── */
-.gcal-row-done { opacity: .5; background: var(--beige); }
-#gcal-events-tbody tr { border-bottom: 1px solid var(--beige-mid); }
-#gcal-events-tbody td { padding: .5rem .6rem; vertical-align: middle; }
+
 .divider { border: none; border-top: 1px solid var(--beige-mid); margin: 1rem 0; }
 .empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--warm-mid); }
 .empty-state .ei { font-size: 40px; margin-bottom: 1rem; opacity: .5; }
