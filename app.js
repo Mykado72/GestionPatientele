@@ -586,8 +586,6 @@ function getMatchScore(titre, p) {
   if (nom.length >= 3 && tWords.has(nom)) return 1;
   return 0;
 }
-  document.querySelectorAll('.gcal-cb:not(:disabled)').forEach(cb => cb.checked = checked);
-}
 
 function gcalConfirmImport() {
   const rows    = window._gcalRows || [];
