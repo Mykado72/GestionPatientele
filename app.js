@@ -475,12 +475,16 @@ function buildRapprochement(events) {
     const done     = alreadyImported.has(ev.id);
 
     // Tentative de rapprochement automatique par nom
-    const matchedPat = findPatientByName(titre);
+    const matchedPat   = findPatientByName(titre);
+    const matchScore   = matchedPat ? getMatchScore(titre, matchedPat) : 0;
+    const matchLabel   = matchScore === 3 ? '✓ prénom + nom'
+                       : matchScore === 2 ? '✓ nom complet'
+                       : matchScore === 1 ? '~ nom seul' : '';
     const patOptions = DB.patients.map(p =>
       `<option value="${p.id}"${matchedPat?.id === p.id ? ' selected' : ''}>${p.prenom} ${p.nom.toUpperCase()}</option>`
     ).join('');
 
-    return { ev, dateStr, heure, duree, titre, done, matchedPat, patOptions };
+    return { ev, dateStr, heure, duree, titre, done, matchedPat, matchScore, matchLabel, patOptions };
   });
 
   // Stocker pour utilisation lors de la confirmation
@@ -504,22 +508,84 @@ function buildRapprochement(events) {
           <option value="">— Nouveau patient —</option>
           ${r.patOptions}
         </select>
-        ${r.matchedPat ? `<div style="font-size:11px;color:var(--sage-dark);margin-top:2px;">✓ trouvé : ${r.matchedPat.prenom}</div>` : '<div style="font-size:11px;color:var(--terra);margin-top:2px;">Aucun patient trouvé</div>'}`}
+        ${r.matchedPat
+          ? `<div style="font-size:11px;margin-top:2px;color:${r.matchScore === 3 ? 'var(--sage-dark)' : r.matchScore === 2 ? 'var(--sage)' : 'var(--warning)'};">${r.matchLabel}</div>`
+          : '<div style="font-size:11px;color:var(--terra);margin-top:2px;">Aucun patient trouvé</div>'
+        }`}
       </td>
     </tr>`).join('');
 }
 
 // Cherche un patient dont le nom complet apparaît dans le titre de l'événement
-function findPatientByName(titre) {
-  const t = titre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return DB.patients.find(p => {
-    const nom    = p.nom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const prenom = p.prenom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    return t.includes(nom) || t.includes(prenom) || t.includes(`${prenom} ${nom}`) || t.includes(`${nom} ${prenom}`);
-  }) || null;
+// Normalise une chaîne : minuscules, sans accents, sans ponctuation
+function normStr(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').trim();
 }
 
-function gcalSelectAll(checked) {
+// Extrait les mots significatifs (≥ 2 caractères) d'une chaîne normalisée
+function wordSet(s) {
+  return new Set(normStr(s).split(/\s+/).filter(w => w.length >= 2));
+}
+
+// Cherche le patient le plus probable dans le titre d'un événement Google.
+// Stratégie par priorité décroissante :
+//   3 — prénom ET nom tous les deux présents comme mots entiers dans le titre
+//   2 — nom complet "prénom nom" ou "nom prénom" présent comme sous-séquence de mots
+//   1 — nom seul présent comme mot entier (fallback, accepté seulement si ≥ 3 caractères)
+//   0 — pas de match
+// En cas d'égalité de score, on préfère le patient dont le nom est le plus long
+//    (pour éviter qu'un prénom court comme "Al" colle à tout le monde).
+function findPatientByName(titre) {
+  const t     = normStr(titre);
+  const tWords = wordSet(titre);
+
+  let best = null, bestScore = 0;
+
+  DB.patients.forEach(p => {
+    const nom    = normStr(p.nom);
+    const prenom = normStr(p.prenom);
+
+    let score = 0;
+
+    // Score 3 : prénom ET nom présents comme mots indépendants
+    if (nom.length >= 2 && prenom.length >= 2 && tWords.has(nom) && tWords.has(prenom)) {
+      score = 3;
+    }
+    // Score 2 : séquence "prénom nom" ou "nom prénom" dans le titre
+    else if (
+      (nom.length >= 2 && prenom.length >= 2) &&
+      (t.includes(prenom + ' ' + nom) || t.includes(nom + ' ' + prenom))
+    ) {
+      score = 2;
+    }
+    // Score 1 : nom seul comme mot entier (uniquement si nom ≥ 3 caractères pour éviter faux positifs)
+    else if (nom.length >= 3 && tWords.has(nom)) {
+      score = 1;
+    }
+
+    if (score === 0) return;
+
+    // En cas d'égalité, privilégier le match le plus "long" (nom + prénom)
+    const len = nom.length + prenom.length;
+    if (score > bestScore || (score === bestScore && len > (normStr(best.nom).length + normStr(best.prenom).length))) {
+      best = p; bestScore = score;
+    }
+  });
+
+  return best;
+}
+
+// Retourne le score de match entre un titre et un patient (même logique que findPatientByName)
+function getMatchScore(titre, p) {
+  const t      = normStr(titre);
+  const tWords = wordSet(titre);
+  const nom    = normStr(p.nom);
+  const prenom = normStr(p.prenom);
+  if (nom.length >= 2 && prenom.length >= 2 && tWords.has(nom) && tWords.has(prenom)) return 3;
+  if (nom.length >= 2 && prenom.length >= 2 && (t.includes(prenom + ' ' + nom) || t.includes(nom + ' ' + prenom))) return 2;
+  if (nom.length >= 3 && tWords.has(nom)) return 1;
+  return 0;
+}
   document.querySelectorAll('.gcal-cb:not(:disabled)').forEach(cb => cb.checked = checked);
 }
 
