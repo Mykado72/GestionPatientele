@@ -25,17 +25,6 @@
     </div>
     <p class="setup-intro">Bienvenue ! Renseignez vos informations professionnelles. Elles apparaîtront sur vos factures et resteront stockées uniquement sur cet appareil.</p>
 
-    <div class="setup-section">Logo du cabinet (optionnel)</div>
-    <div class="form-group">
-      <div class="logo-upload-zone" onclick="document.getElementById('c-logo-input').click()">
-        <img id="c-logo-preview" src="" alt="" style="display:none;max-height:72px;max-width:200px;object-fit:contain;">
-        <span id="c-logo-placeholder">📷 Cliquer pour ajouter un logo (PNG, JPG, SVG — max 500 Ko)</span>
-      </div>
-      <input type="file" id="c-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('c')">
-      <button type="button" class="btn btn-secondary btn-sm" id="c-logo-remove" style="display:none;margin-top:.4rem;" onclick="removeLogo('c')">✕ Supprimer</button>
-      <div class="form-hint">Apparaîtra en haut à gauche de vos factures.</div>
-    </div>
-
     <div class="setup-section">Identité professionnelle</div>
     <div class="form-row">
       <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="c-prenom" placeholder="Prénom"></div>
@@ -326,23 +315,6 @@
       </div>
     </div>
 
-    <div class="settings-section">
-      <div class="settings-section-title">Logo du cabinet</div>
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
-          <div class="logo-upload-zone" style="min-width:160px;flex-shrink:0;" onclick="document.getElementById('s-logo-input').click()">
-            <img id="s-logo-preview" src="" alt="" style="display:none;max-height:64px;max-width:160px;object-fit:contain;">
-            <span id="s-logo-placeholder">📷 Cliquer pour ajouter</span>
-          </div>
-          <input type="file" id="s-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('s')">
-          <div style="flex:1;">
-            <p style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:.5rem;">Affiché en haut à gauche des factures. PNG, JPG ou SVG, max 500 Ko.</p>
-            <button type="button" class="btn btn-secondary btn-sm" id="s-logo-remove" style="display:none;" onclick="removeLogo('s')">✕ Supprimer le logo</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-top:.5rem;">
       <button class="btn btn-danger btn-sm" onclick="resetApp()">Réinitialiser toutes les données</button>
       <button class="btn btn-primary" onclick="saveSettings()" style="padding:.65rem 2rem;">Enregistrer les modifications</button>
@@ -357,14 +329,16 @@
 
 <!-- ── Modal Patient ── -->
 <div class="modal-overlay hidden" id="modal-patient">
-  <div class="modal">
+  <div class="modal" style="max-width:600px;">
     <button class="modal-close" onclick="closeModal('modal-patient')">✕</button>
     <h2 class="modal-title" id="mp-title">Nouveau patient</h2>
     <input type="hidden" id="p-edit-id">
 
     <div class="tab-group">
       <button class="tab-btn active" onclick="showTab('tab-infos', this)">Informations</button>
-      <button class="tab-btn" onclick="showTab('tab-notes', this)">Notes thérapeutiques</button>
+      <button class="tab-btn" onclick="showTab('tab-historique', this)">Historique</button>
+      <button class="tab-btn" onclick="showTab('tab-diagat', this)">Diagnostic AT</button>
+      <button class="tab-btn" onclick="showTab('tab-supervision', this)">Supervision</button>
     </div>
 
     <div id="tab-infos" data-tab>
@@ -393,14 +367,35 @@
         </div>
       </div>
       <div class="form-group"><label>Motif de consultation</label><input type="text" id="p-motif" placeholder="Ex : anxiété, relations, deuil…"></div>
+      <div class="form-group">
+        <label>Notes générales</label>
+        <textarea id="p-notes" rows="3" placeholder="Observations générales…"></textarea>
+      </div>
+      <div class="info-box terra" style="font-size:11px;">⚑ Toutes les données sont stockées uniquement sur cet appareil.</div>
     </div>
 
-    <div id="tab-notes" data-tab style="display:none;">
+    <div id="tab-historique" data-tab style="display:none;">
+      <div class="suivi-section-hint">Antécédents, contexte de vie, histoire personnelle du patient.</div>
       <div class="form-group">
-        <label>Notes confidentielles</label>
-        <textarea id="p-notes" rows="8" placeholder="Notes de suivi thérapeutique…&#10;(strictement confidentielles)"></textarea>
+        <label>Historique</label>
+        <textarea id="p-historique" rows="12" placeholder="Antécédents médicaux, familiaux, événements marquants, contexte socio-professionnel…"></textarea>
       </div>
-      <div class="info-box terra" style="font-size:11px;">⚑ Notes stockées uniquement sur cet appareil.</div>
+    </div>
+
+    <div id="tab-diagat" data-tab style="display:none;">
+      <div class="suivi-section-hint">Analyse Transactionnelle : états du moi, jeux, scénarios, injonctions, permissions…</div>
+      <div class="form-group">
+        <label>Diagnostic Analyse Transactionnelle</label>
+        <textarea id="p-diagnosticAT" rows="12" placeholder="États du moi (Parent, Adulte, Enfant)&#10;Jeux psychologiques identifiés&#10;Scénario de vie&#10;Injonctions / Permissions&#10;Drivers&#10;…"></textarea>
+      </div>
+    </div>
+
+    <div id="tab-supervision" data-tab style="display:none;">
+      <div class="suivi-section-hint">Notes de supervision, points à travailler en inter-séances, observations du thérapeute.</div>
+      <div class="form-group">
+        <label>Supervision</label>
+        <textarea id="p-supervision" rows="12" placeholder="Points à apporter en supervision&#10;Contre-transfert&#10;Hypothèses thérapeutiques&#10;…"></textarea>
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -545,9 +540,60 @@
 
 <!-- ── Modal Vue Séance ── -->
 <div class="modal-overlay hidden" id="modal-seance-view">
-  <div class="modal">
+  <div class="modal" style="max-width:580px;">
     <button class="modal-close" onclick="closeModal('modal-seance-view')">✕</button>
     <div id="seance-view-content"></div>
+  </div>
+</div>
+
+<!-- ── Modal Suivi Séance ── -->
+<div class="modal-overlay hidden" id="modal-suivi-seance">
+  <div class="modal" style="max-width:580px;">
+    <button class="modal-close" onclick="closeModal('modal-suivi-seance')">✕</button>
+    <h2 class="modal-title" id="suivi-seance-title">Suivi thérapeutique</h2>
+    <input type="hidden" id="suivi-seance-id">
+    <input type="hidden" id="suivi-patient-id">
+
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="showTab('sv-tab-historique', this)">Historique</button>
+      <button class="tab-btn" onclick="showTab('sv-tab-diagat', this)">Diagnostic AT</button>
+      <button class="tab-btn" onclick="showTab('sv-tab-supervision', this)">Supervision</button>
+    </div>
+
+    <!-- Historique -->
+    <div id="sv-tab-historique" data-tab>
+      <div class="suivi-section-hint">Antécédents, contexte de vie, histoire personnelle.</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <textarea id="sv-historique-new" rows="3" placeholder="Nouvelle observation…"></textarea>
+      </div>
+      <div id="sv-historique-existing" class="suivi-existing"></div>
+    </div>
+
+    <!-- Diagnostic AT -->
+    <div id="sv-tab-diagat" data-tab style="display:none;">
+      <div class="suivi-section-hint">Analyse Transactionnelle : états du moi, jeux, scénarios…</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <textarea id="sv-diagat-new" rows="3" placeholder="Nouvelle observation AT…"></textarea>
+      </div>
+      <div id="sv-diagat-existing" class="suivi-existing"></div>
+    </div>
+
+    <!-- Supervision -->
+    <div id="sv-tab-supervision" data-tab style="display:none;">
+      <div class="suivi-section-hint">Points à travailler, hypothèses thérapeutiques, contre-transfert.</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <textarea id="sv-supervision-new" rows="3" placeholder="Nouvelle note de supervision…"></textarea>
+      </div>
+      <div id="sv-supervision-existing" class="suivi-existing"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-suivi-seance')">Fermer</button>
+      <button class="btn btn-primary" onclick="saveSuiviSeance()">💾 Enregistrer les notes</button>
+    </div>
   </div>
 </div>
 

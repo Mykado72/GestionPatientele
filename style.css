@@ -164,11 +164,6 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .invoice-row:last-child { border-bottom: none; }
 .invoice-row:hover { background: var(--sage-pale); }
 
-/* ── Logo upload ── */
-.logo-upload-zone { display:flex; align-items:center; justify-content:center; min-height:88px; border:2px dashed var(--beige-mid); border-radius:var(--radius-sm); padding:.75rem 1rem; cursor:pointer; background:var(--beige); transition:var(--t); }
-.logo-upload-zone:hover { border-color:var(--sage-light); background:var(--sage-pale); }
-.logo-upload-zone span  { font-size:13px; color:var(--warm-mid); text-align:center; pointer-events:none; }
-
 /* ── Invoice preview ── */
 .invoice-preview { background: var(--white); border-radius: var(--radius); border: 1px solid var(--beige-mid); padding: 2rem; font-family: var(--font-sans); }
 .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
@@ -191,6 +186,7 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .inv-legal { font-size: 11px; color: var(--warm-mid); background: var(--beige); padding: .6rem .85rem; border-radius: 4px; margin-bottom: 1rem; line-height: 1.6; }
 .inv-payment-block { background: var(--sage-pale); border: 1px solid var(--sage-light); border-radius: var(--radius-sm); padding: .75rem 1rem; font-size: 12px; margin-bottom: 1rem; line-height: 1.7; }
 .inv-payment-block strong { color: var(--sage-dark); }
+.inv-footer { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--beige-mid); font-size: 11px; color: var(--warm-mid); line-height: 1.7; }
 
 /* ── Calendar ── */
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: .75rem; }
@@ -224,6 +220,12 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 /* ── Misc helpers ── */
 .section-title { font-family: var(--font-serif); font-size: 16px; font-weight: 400; color: var(--warm-mid); margin-bottom: .75rem; font-style: italic; }
 .notes-block { background: var(--beige); border-radius: var(--radius-sm); border: 1px solid var(--beige-mid); padding: .85rem 1rem; font-size: 13px; color: var(--warm-dark); line-height: 1.6; white-space: pre-wrap; }
+
+/* ── Suivi thérapeutique ── */
+.suivi-section-hint { font-size: 12px; color: var(--warm-mid); font-style: italic; margin-bottom: .75rem; line-height: 1.5; padding: .35rem .5rem; background: var(--sage-pale); border-radius: 4px; }
+.suivi-content      { white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+.suivi-empty        { padding: .75rem 0; }
+.suivi-tabs-fiche   { border: 1px solid var(--beige-mid); border-radius: var(--radius); padding: 1rem; background: var(--white); margin-bottom: 1.25rem; }
 .divider { border: none; border-top: 1px solid var(--beige-mid); margin: 1rem 0; }
 .empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--warm-mid); }
 .empty-state .ei { font-size: 40px; margin-bottom: 1rem; opacity: .5; }

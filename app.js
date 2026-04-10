@@ -4,7 +4,6 @@
 
 'use strict';
 
-
 // ════════════════════════════════════════════════════════
 // DONNÉES & PERSISTANCE
 // ════════════════════════════════════════════════════════
@@ -25,7 +24,7 @@ let CFG = {
   tarif: 60, delai: 30,
   iban: '', bic: '', banque: '',
   paiements: 'Espèces, chèque, virement bancaire',
-  logo: ''   // base64 du logo (affiché sur les factures)
+  logo: ''  // base64 du logo cabinet (affiché sur les factures)
 };
 
 function dbLoad() {
@@ -59,10 +58,10 @@ function formatDateShort(d) {
   return `${parseInt(j)} ${MOIS_SHORT[parseInt(m) - 1]} ${y}`;
 }
 
-function today()     { return new Date().toISOString().split('T')[0]; }
-function fmtMoney(n) { return n.toFixed(2).replace('.', ',') + ' €'; }
-function fmtNum(n)   { return n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
-function toMin(h)    { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; }
+function today()       { return new Date().toISOString().split('T')[0]; }
+function fmtMoney(n)   { return n.toFixed(2).replace('.', ',') + ' €'; }
+function fmtNum(n)     { return n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function toMin(h)      { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; }
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr);
@@ -115,17 +114,18 @@ function removeLogo(pfx) {
 function refreshLogoPreview(pfx) {
   const img = document.getElementById(`${pfx}-logo-preview`);
   const ph  = document.getElementById(`${pfx}-logo-placeholder`);
-  const btn = document.getElementById(`${pfx}-logo-remove`);
+  const rm  = document.getElementById(`${pfx}-logo-remove`);
+  if (!img) return;
   if (CFG.logo) {
     img.src = CFG.logo;
     img.style.display = 'block';
     ph.style.display  = 'none';
-    btn.style.display = 'inline-flex';
+    rm.style.display  = 'inline-flex';
   } else {
     img.src = '';
     img.style.display = 'none';
     ph.style.display  = '';
-    btn.style.display = 'none';
+    rm.style.display  = 'none';
   }
 }
 
@@ -162,7 +162,7 @@ function saveConfig() {
   const cfg = collectCfg('c');
   if (!cfg.prenom || !cfg.nom) { alert('Prénom et nom sont obligatoires.'); return; }
   if (!cfg.siret)              { alert('Le SIRET est obligatoire pour émettre des factures.'); return; }
-  CFG = { ...CFG, ...cfg };  // préserve CFG.logo
+  CFG = { ...CFG, ...cfg };   // préserve CFG.logo
   cfgSave();
   document.getElementById('setup-screen').classList.add('hidden');
   updateHeader();
@@ -171,7 +171,7 @@ function saveConfig() {
 }
 
 function saveSettings() {
-  CFG = { ...CFG, ...collectCfg('s') };  // préserve CFG.logo
+  CFG = { ...CFG, ...collectCfg('s') };   // préserve CFG.logo
   const nn = parseInt(document.getElementById('s-next-num').value);
   if (nn > 0) DB.nextNum = nn;
   cfgSave(); dbSave();
@@ -183,13 +183,10 @@ function loadSettingsForm() {
   const fields = {
     prenom: 's-prenom', nom: 's-nom', titre: 's-titre', formation: 's-formation',
     adresse: 's-adresse', cp: 's-cp', ville: 's-ville', tel: 's-tel', email: 's-email',
-    siret: 's-siret', tvaNum: 's-tva-num', iban: 's-iban', bic: 's-bic',
-    banque: 's-banque', paiements: 's-paiements'
+    siret: 's-siret', tvaNum: 's-tva-num',
+    iban: 's-iban', bic: 's-bic', banque: 's-banque', paiements: 's-paiements'
   };
-  Object.entries(fields).forEach(([k, id]) => {
-    const el = document.getElementById(id);
-    if (el) el.value = CFG[k] || '';
-  });
+  Object.entries(fields).forEach(([k, id]) => { const el = document.getElementById(id); if (el) el.value = CFG[k] || ''; });
   document.getElementById('s-tarif').value    = CFG.tarif;
   document.getElementById('s-delai').value    = CFG.delai || 30;
   document.getElementById('s-next-num').value = DB.nextNum;
@@ -231,16 +228,17 @@ function resetApp() {
 
 function exportData() {
   const data = { db: DB, cfg: CFG, exportedAt: new Date().toISOString(), version: '1.0' };
-  const a    = Object.assign(document.createElement('a'), {
-    href:     URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })),
-    download: `cabinet-backup-${today()}.json`
-  });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `cabinet-backup-${today()}.json`;
   a.click();
   toast('Export téléchargé ✓', 'success');
 }
 
 function importData() {
-  const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.json' });
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
   input.onchange = e => {
     const reader = new FileReader();
     reader.onload = ev => {
@@ -250,6 +248,7 @@ function importData() {
         if (!confirm('Remplacer toutes les données actuelles ?')) return;
         DB = data.db; CFG = { ...CFG, ...data.cfg };
         dbSave(); cfgSave(); updateHeader(); renderDashboard();
+        refreshLogoPreview('s');
         toast('Import réussi ✓', 'success');
       } catch (err) { alert('Fichier invalide : ' + err.message); }
     };
@@ -281,6 +280,7 @@ function openModal(id) {
   if (id === 'modal-seance')  resetSeanceForm();
   if (id === 'modal-facture') initFactureModal();
 }
+
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 function showTab(tabId, btn) {
@@ -303,12 +303,15 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 function resetPatientForm(p = null) {
   document.getElementById('p-edit-id').value = '';
   document.getElementById('mp-title').textContent = 'Nouveau patient';
-  ['p-prenom','p-nom','p-tel','p-email','p-adresse','p-motif','p-notes'].forEach(f => {
+  ['p-prenom', 'p-nom', 'p-tel', 'p-email', 'p-adresse', 'p-motif', 'p-notes'].forEach(f => {
     document.getElementById(f).value = p ? (p[f.replace('p-', '')] || '') : '';
   });
-  document.getElementById('p-tarif').value     = p ? p.tarif     : (CFG.tarif || 60);
-  document.getElementById('p-statut').value    = p ? p.statut    : 'actif';
-  document.getElementById('p-naissance').value = p ? (p.naissance || '') : '';
+  document.getElementById('p-tarif').value       = p ? p.tarif       : (CFG.tarif || 60);
+  document.getElementById('p-statut').value      = p ? p.statut      : 'actif';
+  document.getElementById('p-naissance').value   = p ? (p.naissance  || '') : '';
+  document.getElementById('p-historique').value  = p ? (p.historique || '') : '';
+  document.getElementById('p-diagnosticAT').value= p ? (p.diagnosticAT || '') : '';
+  document.getElementById('p-supervision').value = p ? (p.supervision || '') : '';
   showTab('tab-infos', document.querySelector('#modal-patient .tab-btn'));
 }
 
@@ -320,14 +323,17 @@ function savePatient() {
   const id   = document.getElementById('p-edit-id').value;
   const data = {
     prenom, nom,
-    naissance: document.getElementById('p-naissance').value,
-    tel:       document.getElementById('p-tel').value.trim(),
-    email:     document.getElementById('p-email').value.trim(),
-    adresse:   document.getElementById('p-adresse').value.trim(),
-    tarif:     parseFloat(document.getElementById('p-tarif').value) || CFG.tarif || 60,
-    statut:    document.getElementById('p-statut').value,
-    motif:     document.getElementById('p-motif').value.trim(),
-    notes:     document.getElementById('p-notes').value.trim()
+    naissance:    document.getElementById('p-naissance').value,
+    tel:          document.getElementById('p-tel').value.trim(),
+    email:        document.getElementById('p-email').value.trim(),
+    adresse:      document.getElementById('p-adresse').value.trim(),
+    tarif:        parseFloat(document.getElementById('p-tarif').value) || CFG.tarif || 60,
+    statut:       document.getElementById('p-statut').value,
+    motif:        document.getElementById('p-motif').value.trim(),
+    notes:        document.getElementById('p-notes').value.trim(),
+    historique:   document.getElementById('p-historique').value.trim(),
+    diagnosticAT: document.getElementById('p-diagnosticAT').value.trim(),
+    supervision:  document.getElementById('p-supervision').value.trim()
   };
 
   if (id) {
@@ -347,7 +353,7 @@ function editPatient(id) {
   document.getElementById('p-edit-id').value = id;
   document.getElementById('mp-title').textContent = 'Modifier le patient';
   resetPatientForm(p);
-  document.getElementById('p-edit-id').value = id; // resetPatientForm le vide
+  document.getElementById('p-edit-id').value = id;
 }
 
 function deletePatient(id) {
@@ -358,10 +364,10 @@ function deletePatient(id) {
 }
 
 function viewPatient(id) {
-  const p = DB.patients.find(p => p.id === id); if (!p) return;
-  const seances = DB.seances.filter(s => s.patientId === id).sort((a,b) => b.date.localeCompare(a.date));
-  const ini = (p.prenom[0] + p.nom[0]).toUpperCase();
-  const age = p.naissance ? Math.floor((Date.now() - new Date(p.naissance)) / 31557600000) + ' ans' : '';
+  const p       = DB.patients.find(p => p.id === id); if (!p) return;
+  const seances = DB.seances.filter(s => s.patientId === id).sort((a, b) => b.date.localeCompare(a.date));
+  const ini     = (p.prenom[0] + p.nom[0]).toUpperCase();
+  const age     = p.naissance ? Math.floor((Date.now() - new Date(p.naissance)) / 31557600000) + ' ans' : '';
 
   const seancesHTML = !seances.length
     ? '<div style="color:var(--warm-mid);font-size:13px;padding:.5rem 0;">Aucune séance enregistrée</div>'
@@ -396,8 +402,29 @@ function viewPatient(id) {
       <div><span style="color:var(--warm-mid);">Tarif :</span> ${p.tarif} € / séance</div>
       <div><span style="color:var(--warm-mid);">Statut :</span> <span class="badge badge-${p.statut === 'actif' ? 'actif' : 'annulé'}">${p.statut}</span></div>
     </div>
-    ${p.notes ? `<div class="section-title">Notes thérapeutiques</div><div class="notes-block" style="margin-bottom:1.25rem;">${p.notes}</div>` : ''}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+
+    ${p.notes ? `<div class="section-title">Notes générales</div><div class="notes-block" style="margin-bottom:1.25rem;">${escHtml(p.notes)}</div>` : ''}
+
+    <!-- Sections suivi thérapeutique -->
+    <div class="suivi-tabs-fiche">
+      <div class="tab-group" style="margin-bottom:.75rem;">
+        <button class="tab-btn active" onclick="showFicheTab('fiche-tab-historique',this)">Historique</button>
+        <button class="tab-btn" onclick="showFicheTab('fiche-tab-diagat',this)">Diagnostic AT</button>
+        <button class="tab-btn" onclick="showFicheTab('fiche-tab-supervision',this)">Supervision</button>
+      </div>
+      <div id="fiche-tab-historique">
+        ${ficheTab(p, 'historique', 'Historique', 'Antécédents, contexte de vie, histoire personnelle…')}
+      </div>
+      <div id="fiche-tab-diagat" style="display:none;">
+        ${ficheTab(p, 'diagnosticAT', 'Diagnostic AT', 'États du moi, jeux, scénarios, injonctions…')}
+      </div>
+      <div id="fiche-tab-supervision" style="display:none;">
+        ${ficheTab(p, 'supervision', 'Supervision', 'Points à superviser, hypothèses, contre-transfert…')}
+      </div>
+    </div>
+
+    <!-- Séances -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;margin-top:1.25rem;">
       <div class="section-title" style="margin-bottom:0;">Séances (${seances.length})</div>
       <button class="btn btn-primary btn-sm" onclick="addSeanceForPatient('${id}')">+ Ajouter séance</button>
     </div>
@@ -406,11 +433,105 @@ function viewPatient(id) {
   document.getElementById('modal-fiche').classList.remove('hidden');
 }
 
+// Échappe le HTML pour l'affichage sécurisé dans les notes-blocks
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// Génère le HTML d'un onglet suivi dans la fiche patient
+function ficheTab(p, field, label, placeholder) {
+  const content = p[field] || '';
+  if (!content) {
+    return `<div class="suivi-empty">
+      <span style="color:var(--warm-mid);font-size:13px;">Aucun contenu — utilisez le bouton ✎ Modifier pour renseigner cet onglet,<br>ou ajoutez des notes depuis une séance.</span>
+    </div>`;
+  }
+  // Afficher les entrées horodatées (format "── [date] ──\n...") ou le texte libre
+  return `<div class="notes-block suivi-content">${escHtml(content)}</div>`;
+}
+
+// Affichage des onglets dans la fiche patient (généré dynamiquement)
+function showFicheTab(tabId, btn) {
+  const container = btn.closest('.suivi-tabs-fiche');
+  container.querySelectorAll('[id^="fiche-tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById(tabId).style.display = '';
+  container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Ouvre le modal de suivi depuis une séance
+function openSuiviSeance(seanceId) {
+  const s = DB.seances.find(s => s.id === seanceId); if (!s) return;
+  const p = DB.patients.find(p => p.id === s.patientId); if (!p) return;
+
+  document.getElementById('suivi-seance-id').value  = seanceId;
+  document.getElementById('suivi-patient-id').value = p.id;
+  document.getElementById('suivi-seance-title').textContent = `Suivi — ${p.prenom} ${p.nom.toUpperCase()} · séance du ${formatDate(s.date)}`;
+
+  // Vider les champs de nouvelle note
+  ['sv-historique-new', 'sv-diagat-new', 'sv-supervision-new'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+
+  // Afficher le contenu existant
+  renderSuiviExisting('sv-historique-existing',  p.historique  || '');
+  renderSuiviExisting('sv-diagat-existing',       p.diagnosticAT || '');
+  renderSuiviExisting('sv-supervision-existing',  p.supervision || '');
+
+  // Reset tabs
+  showTab('sv-tab-historique', document.querySelector('#modal-suivi-seance .tab-btn'));
+  document.getElementById('modal-suivi-seance').classList.remove('hidden');
+}
+
+function renderSuiviExisting(containerId, content) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = content
+    ? `<div class="suivi-section-hint" style="margin-top:.5rem;">Contenu actuel :</div><div class="notes-block suivi-content">${escHtml(content)}</div>`
+    : `<div style="color:var(--warm-mid);font-size:12px;margin-top:.5rem;font-style:italic;">Aucun contenu existant.</div>`;
+}
+
+function saveSuiviSeance() {
+  const seanceId  = document.getElementById('suivi-seance-id').value;
+  const patientId = document.getElementById('suivi-patient-id').value;
+  const s = DB.seances.find(s => s.id === seanceId);
+  const p = DB.patients.find(p => p.id === patientId);
+  if (!p) return;
+
+  const dateStamp = formatDate(s ? s.date : today());
+  let changed = false;
+
+  // Pour chaque section : si une nouvelle note est saisie, la préfixer horodatée
+  const sections = [
+    { newId: 'sv-historique-new',  field: 'historique'   },
+    { newId: 'sv-diagat-new',      field: 'diagnosticAT' },
+    { newId: 'sv-supervision-new', field: 'supervision'  }
+  ];
+
+  sections.forEach(({ newId, field }) => {
+    const newText = document.getElementById(newId).value.trim();
+    if (!newText) return;
+    const stamp   = `── ${dateStamp} ──\n${newText}`;
+    p[field]      = p[field] ? stamp + '\n\n' + p[field] : stamp;
+    changed       = true;
+  });
+
+  if (!changed) { toast('Aucune note à enregistrer.'); return; }
+
+  dbSave();
+  document.getElementById('modal-suivi-seance').classList.add('hidden');
+  toast('Notes de suivi enregistrées ✓', 'success');
+
+  // Rafraîchir la fiche si elle est ouverte
+  const returnTo = document.getElementById('s-return-patient').value;
+  if (returnTo === patientId && document.getElementById('modal-fiche').classList.contains('hidden') === false) {
+    viewPatient(patientId);
+  }
+}
+
 function editPatientFromFiche(id) { closeModal('modal-fiche'); editPatient(id); }
 
 function addSeanceForPatient(patientId) {
-  closeModal('modal-fiche');
-  openModal('modal-seance');
+  closeModal('modal-fiche'); openModal('modal-seance');
   setTimeout(() => {
     document.getElementById('s-patient').value = patientId;
     const p = DB.patients.find(p => p.id === patientId);
@@ -419,12 +540,12 @@ function addSeanceForPatient(patientId) {
   }, 50);
 }
 
-function viewSeanceFromFiche(sid, pid)  { document.getElementById('s-return-patient').value = pid; viewSeance(sid, pid); }
-function editSeanceFromFiche(sid, pid)  { document.getElementById('s-return-patient').value = pid; editSeance(sid); }
+function viewSeanceFromFiche(sid, pid) { document.getElementById('s-return-patient').value = pid; viewSeance(sid, pid); }
+function editSeanceFromFiche(sid, pid) { document.getElementById('s-return-patient').value = pid; editSeance(sid); }
 
 function refreshFicheSeances(patientId) {
-  const el = document.getElementById('fiche-seances-list'); if (!el) return;
-  const seances = DB.seances.filter(s => s.patientId === patientId).sort((a,b) => b.date.localeCompare(a.date));
+  const el      = document.getElementById('fiche-seances-list'); if (!el) return;
+  const seances = DB.seances.filter(s => s.patientId === patientId).sort((a, b) => b.date.localeCompare(a.date));
   if (!seances.length) {
     el.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;padding:.5rem 0;">Aucune séance enregistrée</div>';
     return;
@@ -446,8 +567,9 @@ function renderPatients() {
   const q  = document.getElementById('search-patients').value.toLowerCase();
   const st = document.getElementById('filter-patient-statut').value;
   const el = document.getElementById('patients-list');
+
   const filtered = DB.patients.filter(p => {
-    const matchQ  = (p.prenom + ' ' + p.nom).toLowerCase().includes(q) || (p.motif || '').toLowerCase().includes(q);
+    const matchQ = (p.prenom + ' ' + p.nom).toLowerCase().includes(q) || (p.motif || '').toLowerCase().includes(q);
     return matchQ && (!st || p.statut === st);
   });
 
@@ -459,6 +581,7 @@ function renderPatients() {
     </div>`;
     return;
   }
+
   el.innerHTML = filtered.map(p => {
     const ini = (p.prenom[0] + p.nom[0]).toUpperCase();
     const nb  = DB.seances.filter(s => s.patientId === p.id && s.statut === 'honoré').length;
@@ -516,7 +639,6 @@ function getRecMode() {
   return (el && el.style.display !== 'none') ? 'jourhebdo' : 'intervalle';
 }
 
-// Calcule les dates par jour de semaine récurrent
 function calcDatesJourHebdo(startDate) {
   const jours    = Array.from(document.querySelectorAll('#rec-jours-semaine input:checked')).map(cb => parseInt(cb.value));
   if (!jours.length) return [];
@@ -525,15 +647,15 @@ function calcDatesJourHebdo(startDate) {
   const debutStr = document.getElementById('s-rec-debut-hebdo').value || startDate;
   if (!debutStr) return [];
 
-  const results = [];
-  const debut   = new Date(debutStr);
-  const lundi   = new Date(debut);
-  lundi.setDate(debut.getDate() - ((debut.getDay() + 6) % 7));
+  const results    = [];
+  const debut      = new Date(debutStr);
+  const lundiDebut = new Date(debut);
+  lundiDebut.setDate(debut.getDate() - ((debut.getDay() + 6) % 7));
 
   let semaine = 0;
   while (results.length < count) {
-    const ds = new Date(lundi);
-    ds.setDate(lundi.getDate() + semaine * 7);
+    const ds = new Date(lundiDebut);
+    ds.setDate(lundiDebut.getDate() + semaine * 7);
     jours.forEach(dow => {
       if (results.length >= count) return;
       const date = new Date(ds);
@@ -544,7 +666,7 @@ function calcDatesJourHebdo(startDate) {
     semaine += freq;
     if (semaine > 500) break;
   }
-  return results.sort((a,b) => a.localeCompare(b)).slice(0, count);
+  return results.sort((a, b) => a.localeCompare(b)).slice(0, count);
 }
 
 function updateRecurrencePreview() {
@@ -558,7 +680,6 @@ function updateRecurrencePreview() {
       : '';
     return;
   }
-
   const freq  = parseInt(document.getElementById('s-rec-freq').value)  || 7;
   const count = parseInt(document.getElementById('s-rec-count').value) || 4;
   if (!startDate || count < 1) { document.getElementById('rec-preview').textContent = ''; return; }
@@ -598,7 +719,7 @@ function saveSeance() {
   }
 
   // Vérification : créneau indisponible
-  const startMin = toMin(heure), endMin = startMin + duree;
+  const startMin    = toMin(heure), endMin = startMin + duree;
   const indispoSlot = (DB.indisponibilites || []).find(i => {
     if (i.date !== date || !i.heureDebut) return false;
     const ie = toMin(i.heureFin || i.heureDebut) + (i.duree || 60);
@@ -610,16 +731,13 @@ function saveSeance() {
 
   // Vérification : chevauchement avec d'autres séances
   const recur = !id && document.getElementById('s-recurrence').checked;
+  const mode  = getRecMode();
   let datesToCheck = [date];
   if (recur) {
-    const mode = getRecMode();
-    if (mode === 'jourhebdo') {
-      datesToCheck = calcDatesJourHebdo(date);
-    } else {
-      const freq  = parseInt(document.getElementById('s-rec-freq').value)  || 7;
-      const count = parseInt(document.getElementById('s-rec-count').value) || 1;
-      datesToCheck = Array.from({ length: count }, (_, i) => addDays(date, freq * i));
-    }
+    datesToCheck = mode === 'jourhebdo'
+      ? calcDatesJourHebdo(date)
+      : Array.from({ length: parseInt(document.getElementById('s-rec-count').value) || 1 },
+          (_, i) => addDays(date, (parseInt(document.getElementById('s-rec-freq').value) || 7) * i));
   }
   const conflicts = [];
   datesToCheck.forEach(d => {
@@ -637,7 +755,6 @@ function saveSeance() {
     const idx = DB.seances.findIndex(s => s.id === id);
     if (idx > -1) { base.id = id; base.facture = DB.seances[idx].facture; DB.seances[idx] = base; }
   } else if (recur) {
-    const mode = getRecMode();
     if (mode === 'jourhebdo') {
       const dates = calcDatesJourHebdo(date);
       if (!dates.length) { alert('Sélectionnez au moins un jour de semaine.'); return; }
@@ -670,7 +787,7 @@ function editSeance(id) {
     document.getElementById('s-statut').value        = s.statut;
     document.getElementById('s-paiement').value      = s.paiement || '';
     document.getElementById('s-notes').value         = s.notes    || '';
-    document.getElementById('s-recurrence').checked  = false;
+    document.getElementById('s-recurrence').checked = false;
     toggleRecurrence();
   }, 50);
 }
@@ -728,6 +845,7 @@ function viewSeance(id, returnPatientId = '') {
   const btns = `
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.25rem;border-top:1px solid var(--beige-mid);padding-top:1.25rem;">
       <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-seance-view');editSeance('${id}')">✎ Modifier</button>
+      <button class="btn btn-secondary btn-sm" onclick="openSuiviSeance('${id}')">📋 Suivi</button>
       ${s.statut === 'planifié' ? `
         <button class="btn btn-success btn-sm" onclick="marquerStatut('${id}','honoré')">✓ Honorée</button>
         <button class="btn btn-info btn-sm" onclick="openModalReglement('${id}')">💶 Honorée et Réglée</button>
@@ -779,52 +897,42 @@ function populateSelectPat(selId) {
     DB.patients.map(p => `<option value="${p.id}">${p.prenom} ${p.nom.toUpperCase()}</option>`).join('');
 }
 
-// Génère le HTML d'un bloc indisponibilité
-function mkIndispoBlock(i, prefixDate = '') {
-  const when = prefixDate ? `${prefixDate} — ` : '';
-  const slot  = i.heureDebut ? ` ${i.heureDebut}${i.heureFin ? '–' + i.heureFin : ''}` : ' journée entière';
-  const note  = i.motif ? ` · ${i.motif}` : '';
-  return `<div class="indispo-block">
-    <span>⛔ ${when}Indisponible${slot}${note}</span>
-    <button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button>
-  </div>`;
-}
-
 function renderSeances() {
   const st   = document.getElementById('filter-statut').value;
   const pid  = document.getElementById('filter-pat').value;
   const fdat = document.getElementById('filter-date').value;
 
-  let list = [...DB.seances].sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+  let list = [...DB.seances].sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
   if (st)   list = list.filter(s => s.statut === st);
   if (pid)  list = list.filter(s => s.patientId === pid);
   if (fdat) list = list.filter(s => s.date === fdat);
 
-  const el           = document.getElementById('seances-list');
-  const indispoFitre = fdat ? (DB.indisponibilites || []).filter(i => i.date === fdat) : [];
+  const el               = document.getElementById('seances-list');
+  const indisposDuFiltre = fdat ? (DB.indisponibilites || []).filter(i => i.date === fdat) : [];
 
-  if (!list.length && !indispoFitre.length) {
+  if (!list.length && !indisposDuFiltre.length) {
     el.innerHTML = `<div class="empty-state"><div class="ei">◷</div><p>Aucune séance${fdat ? ' ce jour' : ''}</p>
       <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Ajouter</button></div>`;
     return;
   }
 
+  const mkBlock = (i, prefix = '') => {
+    const txt = `${prefix ? prefix + ' — ' : ''}Indisponible${i.heureDebut ? ' ' + i.heureDebut + (i.heureFin ? '–' + i.heureFin : '') : ' — journée entière'}${i.motif ? ' · ' + i.motif : ''}`;
+    return `<div class="indispo-block"><span>⛔ ${txt}</span><button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button></div>`;
+  };
+
   let html = '';
+  indisposDuFiltre.forEach(i => { html += mkBlock(i); });
 
-  // Indispos du filtre date exact
-  indispoFitre.forEach(i => { html += mkIndispoBlock(i); });
-
-  // Séances + indispos intercalées par jour
   let lastDate = null;
   list.forEach(s => {
     if (!fdat && s.date !== lastDate) {
-      (DB.indisponibilites || []).filter(i => i.date === s.date)
-        .forEach(i => { html += mkIndispoBlock(i, formatDate(s.date)); });
+      (DB.indisponibilites || []).filter(i => i.date === s.date).forEach(i => { html += mkBlock(i, formatDate(s.date)); });
       lastDate = s.date;
     }
     const [, m, j] = s.date.split('-');
     html += `<div class="rdv-item" onclick="viewSeance('${s.id}')">
-      <div class="rdv-date"><div class="day">${parseInt(j)}</div><div class="month">${MOIS_SHORT[parseInt(m)-1]}</div></div>
+      <div class="rdv-date"><div class="day">${parseInt(j)}</div><div class="month">${MOIS_SHORT[parseInt(m) - 1]}</div></div>
       <div style="flex:1;">
         <div style="font-size:14px;font-weight:500;">${getPatientName(s.patientId)}</div>
         <div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${s.heure} · ${s.duree} min${s.paiement ? ' · ' + s.paiement : ''}</div>
@@ -836,28 +944,25 @@ function renderSeances() {
     </div>`;
   });
 
-  // Indispos sur des jours sans séance
   if (!fdat) {
     const datesAvec = new Set(list.map(s => s.date));
-    (DB.indisponibilites || []).filter(i => !datesAvec.has(i.date))
-      .sort((a,b) => a.date.localeCompare(b.date))
-      .forEach(i => { html += mkIndispoBlock(i, formatDate(i.date)); });
+    (DB.indisponibilites || []).filter(i => !datesAvec.has(i.date)).sort((a, b) => a.date.localeCompare(b.date))
+      .forEach(i => { html += mkBlock(i, formatDate(i.date)); });
   }
 
   el.innerHTML = html;
 
-  // Résumé des règles récurrentes
-  const regles    = DB.indisponibilites_regles || [];
+  // Règles récurrentes
   const summaryEl = document.getElementById('indispo-regles-summary');
   if (!summaryEl) return;
+  const regles = DB.indisponibilites_regles || [];
   if (!regles.length) { summaryEl.innerHTML = ''; return; }
-
-  const JOURS   = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
+  const JOURS   = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
   const freqLbl = f => f <= 1 ? 'toutes les semaines' : `1 semaine sur ${f}`;
   summaryEl.innerHTML = `<div style="margin-top:1.5rem;">
     <div class="section-title" style="margin-bottom:.5rem;">Règles d'indisponibilité récurrentes</div>
     ${regles.map(r => `<div class="indispo-block">
-      <span>🔁 <strong>${r.jours.map(j => JOURS[j]).join(', ')}</strong>, ${freqLbl(r.freq)}${r.heureDebut ? ` · ${r.heureDebut}${r.heureFin ? '–' + r.heureFin : ''}` : ' · journée entière'}${r.motif ? ` · <em>${r.motif}</em>` : ''}<br>
+      <span>🔁 <strong>${r.jours.map(j => JOURS[j]).join(', ')}</strong>, ${freqLbl(r.freq)}${r.heureDebut ? ` · ${r.heureDebut}${r.heureFin ? '–' + r.heureFin : ''}` : ' · journée entière'}${r.motif ? ' · <em>' + r.motif + '</em>' : ''}<br>
       <small style="color:var(--warm-mid);">${formatDate(r.debut)}${r.fin ? ' → ' + formatDate(r.fin) : ' → indéfiniment'}</small></span>
       <button class="btn btn-danger btn-xs" onclick="deleteIndispoRegle('${r.id}')">Supprimer</button>
     </div>`).join('')}
@@ -908,19 +1013,17 @@ function saveIndispo() {
     if (!jours.length) { alert('Sélectionnez au moins un jour.'); return; }
     const debut = document.getElementById('indispo-rec-debut').value;
     if (!debut) { alert('Date de début requise.'); return; }
-    if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
     DB.indisponibilites_regles.push({
       id: uid(), jours,
       freq:  parseInt(document.getElementById('indispo-rec-freq').value) || 1,
       debut, fin: document.getElementById('indispo-rec-fin').value || null,
       heureDebut, heureFin, motif
     });
-    const JOURS = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
+    const JOURS = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
     toast(`Règle récurrente enregistrée (${jours.map(j => JOURS[j]).join(', ')}) ✓`, 'success');
   } else {
     const date = document.getElementById('indispo-date').value;
     if (!date) { alert('Date requise.'); return; }
-    if (!DB.indisponibilites) DB.indisponibilites = [];
     DB.indisponibilites.push({ id: uid(), date, heureDebut, heureFin, motif });
     toast('Indisponibilité enregistrée ✓', 'success');
   }
@@ -932,31 +1035,30 @@ function saveIndispo() {
 
 function deleteIndispo(id) {
   if (!confirm('Supprimer cette indisponibilité ?')) return;
-  DB.indisponibilites = (DB.indisponibilites || []).filter(i => i.id !== id);
+  DB.indisponibilites = DB.indisponibilites.filter(i => i.id !== id);
   dbSave(); renderSeances(); renderCalendar();
   toast('Indisponibilité supprimée');
 }
 
 function deleteIndispoRegle(id) {
   if (!confirm('Supprimer cette règle récurrente ?')) return;
-  DB.indisponibilites_regles = (DB.indisponibilites_regles || []).filter(r => r.id !== id);
+  DB.indisponibilites_regles = DB.indisponibilites_regles.filter(r => r.id !== id);
   dbSave(); renderSeances(); renderCalendar();
   toast('Règle supprimée');
 }
 
 // Retourne la règle récurrente couvrant une date, ou null
 function getIndispoRegleForDate(dateStr) {
-  const d    = new Date(dateStr);
-  const dow  = d.getDay();
-  const lundi = new Date(d);
+  const d      = new Date(dateStr);
+  const dow    = d.getDay();
+  const lundi  = new Date(d);
   lundi.setDate(d.getDate() - ((d.getDay() + 6) % 7));
 
   for (const r of (DB.indisponibilites_regles || [])) {
     if (!r.jours.includes(dow))   continue;
-    if (dateStr < r.debut)         continue;
+    if (dateStr < r.debut)        continue;
     if (r.fin && dateStr > r.fin) continue;
     if (r.freq <= 1) return r;
-
     const lundiDebut = new Date(r.debut);
     lundiDebut.setDate(lundiDebut.getDate() - ((lundiDebut.getDay() + 6) % 7));
     const diffSemaines = Math.round((lundi - lundiDebut) / (7 * 86400000));
@@ -989,8 +1091,10 @@ function populateFactureSeances() {
     document.getElementById('f-total-preview').textContent = '0,00 €';
     return;
   }
-  const seances = DB.seances.filter(s => s.patientId === pId && (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
-                             .sort((a,b) => a.date.localeCompare(b.date));
+  const seances = DB.seances
+    .filter(s => s.patientId === pId && (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
   if (!seances.length) {
     c.innerHTML = `<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Aucune séance honorée/réglée non facturée</div>`;
     document.getElementById('f-total-preview').textContent = '0,00 €';
@@ -1019,25 +1123,26 @@ function genererFacture() {
   const pId = document.getElementById('f-patient').value;
   const cbs = document.querySelectorAll('.f-cb:checked');
   if (!pId || !cbs.length) { alert('Sélectionnez un patient et au moins une séance.'); return; }
-  if (!CFG.siret) { alert('SIRET requis. Complétez vos paramètres.'); return; }
+  if (!CFG.siret)           { alert('SIRET requis. Complétez vos paramètres.'); return; }
 
   const ids     = Array.from(cbs).map(cb => cb.value);
   const seances = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
   const total   = seances.reduce((a, s) => a + s.tarif, 0);
 
   // Numérotation ANNEE-MM-JJ-XX (date de la première séance)
-  const firstDate  = [...seances].sort((a,b) => a.date.localeCompare(b.date))[0]?.date || today();
-  const [fy,fm,fj] = firstDate.split('-');
-  const num        = `${fy}-${fm}-${fj}-${String(DB.nextNum).padStart(2, '0')}`;
+  const firstDate    = [...seances].sort((a, b) => a.date.localeCompare(b.date))[0]?.date || today();
+  const [fy, fm, fj] = firstDate.split('-');
+  const num          = `${fy}-${fm}-${fj}-${String(DB.nextNum).padStart(2, '0')}`;
   DB.nextNum++;
 
+  const paiements = [...new Set(seances.map(s => s.paiement).filter(Boolean))];
   const f = {
     id: uid(), num, patientId: pId, seancesIds: ids,
     date:             document.getElementById('f-date').value,
     echeance:         document.getElementById('f-echeance').value,
     objet:            document.getElementById('f-objet').value,
-    paiementsSeances: [...new Set(seances.map(s => s.paiement).filter(Boolean))],
-    total, createdAt: new Date().toISOString()
+    paiementsSeances: paiements, total,
+    createdAt:        new Date().toISOString()
   };
 
   DB.factures.push(f);
@@ -1050,39 +1155,34 @@ function genererFacture() {
 // Construit le HTML de la facture (aperçu + impression)
 function buildInvoice(f) {
   const p       = DB.patients.find(p => p.id === f.patientId);
-  const seances = f.seancesIds.map(sid => DB.seances.find(s => s.id === sid)).filter(Boolean)
-                               .sort((a,b) => a.date.localeCompare(b.date));
+  const seances = f.seancesIds.map(sid => DB.seances.find(s => s.id === sid)).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
   const pName   = p ? `${p.prenom} ${p.nom.toUpperCase()}` : '—';
   const isTVA   = CFG.tvaMention && !CFG.tvaMention.startsWith('Exonéré') && !CFG.tvaMention.startsWith('TVA non applicable');
   const ht      = isTVA ? f.total / 1.20 : f.total;
   const tva     = isTVA ? f.total - f.total / 1.20 : 0;
   const adr     = [CFG.adresse, CFG.cp && CFG.ville ? `${CFG.cp} ${CFG.ville}` : ''].filter(Boolean).join('<br>');
 
-  // Infos de règlement (dédupliquées par date+mode)
+  // Infos de règlement (dédupliquées)
   const toutesReglees = seances.every(s => s.statut === 'réglée');
   const regUniques    = [...new Map(
     seances.filter(s => s.statut === 'réglée' && s.dateReglement)
            .map(s => [`${s.dateReglement}|${s.paiement || ''}`, { date: s.dateReglement, mode: s.paiement || '' }])
   ).values()];
 
-  // Section totaux (label "à régler" ou non selon statut)
-  const totalLabel = toutesReglees && regUniques.length ? 'Total TTC' : 'Total TTC à régler';
+  // Section totaux
   const totalSection = `<div class="inv-total-section">
     <div class="inv-total-row">
       <span class="inv-total-label">Total HT</span>
       <span class="inv-total-value">${fmtMoney(ht)}</span>
     </div>
-    ${isTVA ? `<div class="inv-total-row">
-      <span class="inv-total-label">TVA (20 %)</span>
-      <span class="inv-total-value">${fmtMoney(tva)}</span>
-    </div>` : ''}
+    ${isTVA ? `<div class="inv-total-row"><span class="inv-total-label">TVA (20 %)</span><span class="inv-total-value">${fmtMoney(tva)}</span></div>` : ''}
     <div class="inv-total-row" style="border-top:1px solid var(--beige-mid);padding-top:.5rem;margin-top:.25rem;">
-      <span class="inv-total-label inv-grand-total-label">${totalLabel}</span>
+      <span class="inv-total-label inv-grand-total-label">${toutesReglees && regUniques.length ? 'Total TTC' : 'Total TTC à régler'}</span>
       <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
     </div>
   </div>`;
 
-  // Ligne de règlement ou mode de paiement
+  // Modalités de règlement
   const regModes = f.paiementsSeances?.length ? f.paiementsSeances.join(', ') : (CFG.paiements || '');
   const regLine  = toutesReglees && regUniques.length
     ? (regUniques.length === 1
@@ -1106,14 +1206,14 @@ function buildInvoice(f) {
     <td style="text-align:right;font-family:var(--font-serif);">${fmtMoney(s.tarif)}</td>
   </tr>`).join('');
 
-  // Logo : limité à 80px de haut, 200px de large max
+  // Logo limité à 64px de hauteur pour ne pas envahir l'en-tête
   const logoHtml = CFG.logo
-    ? `<img src="${CFG.logo}" alt="Logo" style="max-height:80px;max-width:200px;object-fit:contain;margin-right:1rem;flex-shrink:0;">`
+    ? `<img src="${CFG.logo}" alt="Logo" style="max-height:64px;max-width:150px;object-fit:contain;flex-shrink:0;">`
     : '';
 
   return `<div class="invoice-preview" id="printable-invoice">
     <div class="inv-header">
-      <div style="display:flex;align-items:flex-start;">
+      <div style="display:flex;align-items:flex-start;gap:.85rem;">
         ${logoHtml}
         <div>
           <div class="inv-logo-name">${CFG.prenom} ${CFG.nom.toUpperCase()}</div>
@@ -1139,7 +1239,8 @@ function buildInvoice(f) {
         <div class="inv-party-name">${CFG.prenom} ${CFG.nom.toUpperCase()}</div>
         <div class="inv-party-detail">
           ${CFG.titre || ''}<br>
-          SIRET : ${CFG.siret}${CFG.tvaNum ? '<br>N° TVA : ' + CFG.tvaNum : ''}
+          SIRET : ${CFG.siret}
+          ${CFG.tvaNum ? '<br>N° TVA : ' + CFG.tvaNum : ''}
         </div>
       </div>
       <div>
@@ -1174,27 +1275,29 @@ function viewFacture(id) {
 }
 
 function printFacture() {
-  const id       = document.getElementById('modal-facture-view').dataset.factureId;
-  const f        = DB.factures.find(f => f.id === id);
-  const p        = f ? DB.patients.find(p => p.id === f.patientId) : null;
-  const nom      = p ? p.nom.toUpperCase().replace(/\s+/g, '-') : 'PATIENT';
-  const s0       = f ? DB.seances.find(s => f.seancesIds.includes(s.id)) : null;
-  const dateStr  = s0 ? s0.date.replace(/-/g, '') : (f?.date.replace(/-/g, '') || '');
-  const filename = `Facture-${nom}-${dateStr}`;
-  const content  = document.getElementById('printable-invoice').outerHTML;
-  const w        = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${filename}</title>
+  const id  = document.getElementById('modal-facture-view').dataset.factureId;
+  const f   = DB.factures.find(f => f.id === id);
+  const p   = f ? DB.patients.find(p => p.id === f.patientId) : null;
+  const nom = p ? p.nom.toUpperCase().replace(/\s+/g, '-') : 'PATIENT';
+  const s0  = f ? DB.seances.find(s => f.seancesIds.includes(s.id)) : null;
+  const ds  = s0 ? s0.date.replace(/-/g, '') : (f?.date.replace(/-/g, '') || '');
+
+  const content = document.getElementById('printable-invoice').outerHTML;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Facture-${nom}-${ds}</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
   :root{--sage:#6b8f71;--sage-dark:#4a6b50;--sage-pale:#e8f0e9;--sage-light:#a8c4a2;--beige:#f7f3ee;--beige-mid:#ede5d8;--warm-dark:#3d3530;--warm-mid:#7a6e67;--warm-light:#b8afa8;--font-serif:'Cormorant Garamond',Georgia,serif;--font-sans:'DM Sans',system-ui,sans-serif;}
-  *{box-sizing:border-box;margin:0;padding:0;}body{font-family:var(--font-sans);color:var(--warm-dark);padding:2cm;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--font-sans);color:var(--warm-dark);padding:2cm;}
   .invoice-preview{max-width:100%;}
   .inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;}
   .inv-logo-name{font-family:var(--font-serif);font-size:22px;font-weight:400;color:var(--sage-dark);}
   .inv-logo-sub{font-size:11px;color:var(--warm-mid);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
   .inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.75rem;padding:1.25rem;background:var(--beige);border-radius:8px;}
   .inv-party-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--warm-mid);margin-bottom:.4rem;}
-  .inv-party-name{font-size:14px;font-weight:500;margin-bottom:.2rem;}.inv-party-detail{font-size:12px;color:var(--warm-mid);line-height:1.6;}
+  .inv-party-name{font-size:14px;font-weight:500;margin-bottom:.2rem;}
+  .inv-party-detail{font-size:12px;color:var(--warm-mid);line-height:1.6;}
   .inv-table{width:100%;border-collapse:collapse;margin-bottom:1.5rem;font-size:13px;}
   .inv-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--warm-mid);font-weight:500;border-bottom:1.5px solid var(--beige-mid);padding:.5rem .75rem;text-align:left;}
   .inv-table td{padding:.75rem;border-bottom:1px solid var(--beige-mid);}
@@ -1219,7 +1322,7 @@ function renderFactures() {
       <button class="btn btn-primary" onclick="openModal('modal-facture')">+ Créer une facture</button></div></div>`;
     return;
   }
-  const sorted  = [...DB.factures].sort((a,b) => b.date.localeCompare(a.date));
+  const sorted  = [...DB.factures].sort((a, b) => b.date.localeCompare(a.date));
   const totalCA = DB.factures.reduce((a, f) => a + f.total, 0);
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
@@ -1297,8 +1400,7 @@ function goToSeancesMois() {
 function renderSeancesMois(moisStr) {
   const st  = document.getElementById('filter-statut').value;
   const pid = document.getElementById('filter-pat').value;
-  let list  = [...DB.seances].filter(s => s.date.startsWith(moisStr))
-                              .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+  let list  = [...DB.seances].filter(s => s.date.startsWith(moisStr)).sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
   if (st)  list = list.filter(s => s.statut === st);
   if (pid) list = list.filter(s => s.patientId === pid);
 
@@ -1306,9 +1408,7 @@ function renderSeancesMois(moisStr) {
   const label    = `${MOIS_NOMS[parseInt(mo) - 1]} ${yr}`;
   const el       = document.getElementById('seances-list');
 
-  let html = `<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;font-size:13px;
-      color:var(--sage-dark);background:var(--sage-pale);border:1px solid var(--sage-light);
-      border-radius:var(--radius-sm);padding:.4rem .75rem;">
+  let html = `<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;font-size:13px;color:var(--sage-dark);background:var(--sage-pale);border:1px solid var(--sage-light);border-radius:var(--radius-sm);padding:.4rem .75rem;">
     📅 Filtre : <strong>${label}</strong>
     <button class="btn btn-secondary btn-xs" style="margin-left:auto;" onclick="renderSeances()">✕ Retirer</button>
   </div>`;
@@ -1319,7 +1419,7 @@ function renderSeancesMois(moisStr) {
     list.forEach(s => {
       const [, m, j] = s.date.split('-');
       html += `<div class="rdv-item" onclick="viewSeance('${s.id}')">
-        <div class="rdv-date"><div class="day">${parseInt(j)}</div><div class="month">${MOIS_SHORT[parseInt(m)-1]}</div></div>
+        <div class="rdv-date"><div class="day">${parseInt(j)}</div><div class="month">${MOIS_SHORT[parseInt(m) - 1]}</div></div>
         <div style="flex:1;">
           <div style="font-size:14px;font-weight:500;">${getPatientName(s.patientId)}</div>
           <div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${s.heure} · ${s.duree} min${s.paiement ? ' · ' + s.paiement : ''}</div>
@@ -1335,20 +1435,19 @@ function renderSeancesMois(moisStr) {
 }
 
 function showCaModal() {
-  const now  = new Date(), mo = now.getMonth(), yr = now.getFullYear();
-  const label = `${MOIS_NOMS[mo]} ${yr}`;
-
+  const now        = new Date(), mo = now.getMonth(), yr = now.getFullYear();
+  const label      = `${MOIS_NOMS[mo]} ${yr}`;
   const seancesMois = DB.seances.filter(s => {
     const d = new Date(s.date);
     return d.getMonth() === mo && d.getFullYear() === yr && s.statut !== 'annulé';
-  }).sort((a,b) => a.date.localeCompare(b.date));
+  }).sort((a, b) => a.date.localeCompare(b.date));
 
   const reglees    = seancesMois.filter(s => s.statut === 'réglée');
   const honorees   = seancesMois.filter(s => s.statut === 'honoré');
   const planifiees = seancesMois.filter(s => s.statut === 'planifié');
-  const caR = reglees.reduce((a,s) => a + s.tarif, 0);
-  const caH = honorees.reduce((a,s) => a + s.tarif, 0);
-  const caP = planifiees.reduce((a,s) => a + s.tarif, 0);
+  const caR = reglees.reduce((a, s) => a + s.tarif, 0);
+  const caH = honorees.reduce((a, s) => a + s.tarif, 0);
+  const caP = planifiees.reduce((a, s) => a + s.tarif, 0);
   const caT = caR + caH + caP;
   const pct = caT > 0 ? Math.min(100, caR / caT * 100) : 0;
 
@@ -1387,25 +1486,27 @@ function showCaModal() {
     ${bloc('Séances réglées', 'var(--success)', reglees, caR, '✓')}
     ${bloc('Séances honorées (non réglées)', 'var(--info)', honorees, caH, '◷')}
     ${planifiees.length ? bloc('Séances planifiées', 'var(--warm-mid)', planifiees, caP, '📅') : ''}`;
-
   document.getElementById('modal-ca').classList.remove('hidden');
 }
 
 function showAFacturerModal() {
-  const seances = DB.seances.filter(s => (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
-                             .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
-  const byP = {};
-  seances.forEach(s => { if (!byP[s.patientId]) byP[s.patientId] = []; byP[s.patientId].push(s); });
+  const seances = DB.seances
+    .filter(s => (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
 
-  const html = Object.entries(byP).map(([pid, ss]) => {
+  const byPatient = {};
+  seances.forEach(s => { if (!byPatient[s.patientId]) byPatient[s.patientId] = []; byPatient[s.patientId].push(s); });
+
+  const html = Object.entries(byPatient).map(([pid, ss]) => {
     const pn    = getPatientName(pid);
     const total = ss.reduce((a, s) => a + s.tarif, 0);
-    const rows  = ss.map(s => `<div style="display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;font-size:13px;border-bottom:1px solid var(--beige-mid);">
-      <span style="min-width:115px;color:var(--warm-mid);">${formatDateShort(s.date)} ${s.heure}</span>
-      <span class="badge badge-${s.statut}" style="font-size:10px;">${s.statut}</span>
-      ${s.paiement ? `<span style="font-size:11px;color:var(--warm-mid);">${s.paiement}</span>` : ''}
-      <span style="margin-left:auto;font-family:var(--font-serif);">${s.tarif} €</span>
-    </div>`).join('');
+    const rows  = ss.map(s => `
+      <div style="display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;font-size:13px;border-bottom:1px solid var(--beige-mid);">
+        <span style="min-width:115px;color:var(--warm-mid);">${formatDateShort(s.date)} ${s.heure}</span>
+        <span class="badge badge-${s.statut}" style="font-size:10px;">${s.statut}</span>
+        ${s.paiement ? `<span style="font-size:11px;color:var(--warm-mid);">${s.paiement}</span>` : ''}
+        <span style="margin-left:auto;font-family:var(--font-serif);">${s.tarif} €</span>
+      </div>`).join('');
     return `<div style="margin-bottom:1rem;border:1px solid var(--beige-mid);border-radius:var(--radius-sm);overflow:hidden;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .85rem;background:var(--beige);">
         <strong style="font-size:14px;">${pn}</strong>
@@ -1413,7 +1514,8 @@ function showAFacturerModal() {
           <span style="font-family:var(--font-serif);font-size:15px;color:var(--sage-dark);">${fmtMoney(total)}</span>
           <button class="btn btn-primary btn-sm" onclick="closeModal('modal-a-facturer');openModal('modal-facture');setTimeout(()=>{document.getElementById('f-patient').value='${pid}';populateFactureSeances();setTimeout(()=>{document.querySelectorAll('.f-cb').forEach(cb=>cb.checked=true);updateFTotal();},60);},120);">📄 Facturer</button>
         </div>
-      </div>${rows}
+      </div>
+      ${rows}
     </div>`;
   }).join('');
 
@@ -1423,12 +1525,14 @@ function showAFacturerModal() {
 
 function renderCalendar() {
   const todayD  = new Date();
-  const yr = calDate.getFullYear(), mo = calDate.getMonth();
-  document.getElementById('cal-title').textContent = `${MOIS_NOMS[mo]} ${yr}`;
+  const yr      = calDate.getFullYear(), mo = calDate.getMonth();
   const moisStr = `${yr}-${String(mo + 1).padStart(2, '0')}`;
-  const fo      = (new Date(yr, mo, 1).getDay() + 6) % 7;
-  const dim     = new Date(yr, mo + 1, 0).getDate();
+  document.getElementById('cal-title').textContent = `${MOIS_NOMS[mo]} ${yr}`;
 
+  const fo  = (new Date(yr, mo, 1).getDay() + 6) % 7;
+  const dim = new Date(yr, mo + 1, 0).getDate();
+
+  // Séances du mois
   const rdvMap = {};
   DB.seances.filter(s => s.date.startsWith(moisStr)).forEach(s => {
     const j = parseInt(s.date.split('-')[2]);
@@ -1436,15 +1540,15 @@ function renderCalendar() {
     rdvMap[j].push(s);
   });
 
+  // Jours indisponibles
   const indispoSet = new Set(
     (DB.indisponibilites || []).filter(i => i.date.startsWith(moisStr)).map(i => parseInt(i.date.split('-')[2]))
   );
   for (let d = 1; d <= dim; d++) {
-    const ds = `${moisStr}-${String(d).padStart(2, '0')}`;
-    if (getIndispoRegleForDate(ds)) indispoSet.add(d);
+    if (getIndispoRegleForDate(`${moisStr}-${String(d).padStart(2, '0')}`)) indispoSet.add(d);
   }
 
-  const jNoms = ['Lu','Ma','Me','Je','Ve','Sa','Di'];
+  const jNoms = ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'];
   let h = jNoms.map(j => `<div class="cal-day-name">${j}</div>`).join('');
   for (let i = 0; i < fo; i++) h += '<div class="cal-day empty"></div>';
   for (let d = 1; d <= dim; d++) {
@@ -1453,7 +1557,7 @@ function renderCalendar() {
     const isIndi  = indispoSet.has(d);
     const ds      = `${moisStr}-${String(d).padStart(2, '0')}`;
     const click   = hasRdv ? `onclick="goToSeancesByDate('${ds}')" title="${rdvMap[d].length} séance(s)"` : '';
-    const cls     = ['cal-day', isToday && 'today', hasRdv && 'has-rdv clickable', isIndi && 'is-indispo'].filter(Boolean).join(' ');
+    const cls     = ['cal-day', isToday ? 'today' : '', hasRdv ? 'has-rdv clickable' : '', isIndi ? 'is-indispo' : ''].filter(Boolean).join(' ');
     h += `<div class="${cls}" ${click}>${d}</div>`;
   }
   document.getElementById('calendar').innerHTML = h;
@@ -1467,15 +1571,16 @@ function goToSeancesByDate(dateStr) {
 
 function renderUpcoming() {
   const now = today();
-  const up  = DB.seances.filter(s => s.date >= now && s.statut === 'planifié')
-                         .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure))
-                         .slice(0, 8);
-  const el  = document.getElementById('upcoming-list');
+  const up  = DB.seances
+    .filter(s => s.date >= now && s.statut === 'planifié')
+    .sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure))
+    .slice(0, 8);
+  const el = document.getElementById('upcoming-list');
   if (!up.length) { el.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;">Aucune séance à venir</div>'; return; }
   el.innerHTML = up.map(s => {
     const [, m, j] = s.date.split('-');
     return `<div style="display:flex;align-items:center;gap:.75rem;padding:.55rem 0;border-bottom:1px solid var(--beige-mid);font-size:13px;cursor:pointer;" onclick="viewSeance('${s.id}')">
-      <span style="color:var(--warm-mid);font-size:12px;min-width:75px;">${parseInt(j)} ${MOIS_SHORT[parseInt(m)-1]} ${s.heure}</span>
+      <span style="color:var(--warm-mid);font-size:12px;min-width:75px;">${parseInt(j)} ${MOIS_SHORT[parseInt(m) - 1]} ${s.heure}</span>
       <span style="font-weight:500;">${getPatientName(s.patientId, false)}</span>
     </div>`;
   }).join('');
@@ -1497,6 +1602,6 @@ if (isConfigured()) {
   document.getElementById('setup-screen').classList.remove('hidden');
 }
 
-// Manifest PWA (généré dynamiquement pour compatibilité GitHub Pages)
+// Manifest PWA
 const _manifest = { name: 'Cabinet Psychothérapie', short_name: 'Cabinet Psy', start_url: '.', display: 'standalone', background_color: '#f7f3ee', theme_color: '#6b8f71' };
 document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(_manifest)], { type: 'application/manifest+json' })));
