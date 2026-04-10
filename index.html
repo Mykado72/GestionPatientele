@@ -25,6 +25,15 @@
     </div>
     <p class="setup-intro">Bienvenue ! Renseignez vos informations professionnelles. Elles apparaîtront sur vos factures et resteront stockées uniquement sur cet appareil.</p>
 
+    <!-- Reprise depuis un backup -->
+    <div class="info-box sage" style="margin-bottom:1.5rem;">
+      <strong>Vous utilisez déjà cette application sur un autre appareil ?</strong><br>
+      <span style="font-size:12px;">Importez votre fichier de sauvegarde pour récupérer toutes vos données (patients, séances, factures).</span>
+      <div style="margin-top:.6rem;">
+        <button type="button" class="btn btn-primary btn-sm" onclick="importDataFromSetup()">⬆ Importer un fichier de sauvegarde</button>
+      </div>
+    </div>
+
     <div class="setup-section">Identité professionnelle</div>
     <div class="form-row">
       <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="c-prenom" placeholder="Prénom"></div>
@@ -181,6 +190,7 @@
     <div class="page-header">
       <h1 class="page-title">Séances</h1>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="openGcalImportOrConnect()" title="Importer depuis Google Agenda">📅 Google Agenda</button>
         <button class="btn btn-secondary" onclick="openModalIndispo()" title="Ajouter une indisponibilité">⛔ Indisponibilité</button>
         <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Nouvelle séance</button>
       </div>
@@ -315,6 +325,24 @@
       </div>
     </div>
 
+    <div class="settings-section">
+      <div class="settings-section-title">Google Agenda</div>
+      <div class="card">
+        <div id="gcal-status-box" style="margin-bottom:.75rem;"></div>
+        <div class="form-group">
+          <label>Client ID OAuth 2.0</label>
+          <input type="text" id="s-gcal-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com">
+          <div class="form-hint">
+            <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--sage-dark);">Google Cloud Console</a>
+            → API &amp; Services → Activer <strong>Google Calendar API</strong> → Identifiants → Créer Client OAuth → Application Web.<br>
+            Ajouter <code id="gcal-origin-hint"></code> comme <strong>Origine JavaScript autorisée</strong>.<br>
+            L'application ne modifie jamais votre agenda (lecture seule).
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="saveGcalClientId()">Enregistrer le Client ID</button>
+      </div>
+    </div>
+
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-top:.5rem;">
       <button class="btn btn-danger btn-sm" onclick="resetApp()">Réinitialiser toutes les données</button>
       <button class="btn btn-primary" onclick="saveSettings()" style="padding:.65rem 2rem;">Enregistrer les modifications</button>
@@ -329,14 +357,16 @@
 
 <!-- ── Modal Patient ── -->
 <div class="modal-overlay hidden" id="modal-patient">
-  <div class="modal">
+  <div class="modal" style="max-width:600px;">
     <button class="modal-close" onclick="closeModal('modal-patient')">✕</button>
     <h2 class="modal-title" id="mp-title">Nouveau patient</h2>
     <input type="hidden" id="p-edit-id">
 
     <div class="tab-group">
       <button class="tab-btn active" onclick="showTab('tab-infos', this)">Informations</button>
-      <button class="tab-btn" onclick="showTab('tab-notes', this)">Notes thérapeutiques</button>
+      <button class="tab-btn" onclick="showTab('tab-historique', this)">Historique</button>
+      <button class="tab-btn" onclick="showTab('tab-diagat', this)">Diagnostic AT</button>
+      <button class="tab-btn" onclick="showTab('tab-supervision', this)">Supervision</button>
     </div>
 
     <div id="tab-infos" data-tab>
@@ -365,14 +395,35 @@
         </div>
       </div>
       <div class="form-group"><label>Motif de consultation</label><input type="text" id="p-motif" placeholder="Ex : anxiété, relations, deuil…"></div>
+      <div class="form-group">
+        <label>Notes générales</label>
+        <textarea id="p-notes" rows="3" placeholder="Observations générales…"></textarea>
+      </div>
+      <div class="info-box terra" style="font-size:11px;">⚑ Toutes les données sont stockées uniquement sur cet appareil.</div>
     </div>
 
-    <div id="tab-notes" data-tab style="display:none;">
+    <div id="tab-historique" data-tab style="display:none;">
+      <div class="suivi-section-hint">Antécédents, contexte de vie, histoire personnelle du patient.</div>
       <div class="form-group">
-        <label>Notes confidentielles</label>
-        <textarea id="p-notes" rows="8" placeholder="Notes de suivi thérapeutique…&#10;(strictement confidentielles)"></textarea>
+        <label>Historique</label>
+        <textarea id="p-historique" rows="12" placeholder="Antécédents médicaux, familiaux, événements marquants, contexte socio-professionnel…"></textarea>
       </div>
-      <div class="info-box terra" style="font-size:11px;">⚑ Notes stockées uniquement sur cet appareil.</div>
+    </div>
+
+    <div id="tab-diagat" data-tab style="display:none;">
+      <div class="suivi-section-hint">Analyse Transactionnelle : états du moi, jeux, scénarios, injonctions, permissions…</div>
+      <div class="form-group">
+        <label>Diagnostic Analyse Transactionnelle</label>
+        <textarea id="p-diagnosticAT" rows="12" placeholder="États du moi (Parent, Adulte, Enfant)&#10;Jeux psychologiques identifiés&#10;Scénario de vie&#10;Injonctions / Permissions&#10;Drivers&#10;…"></textarea>
+      </div>
+    </div>
+
+    <div id="tab-supervision" data-tab style="display:none;">
+      <div class="suivi-section-hint">Notes de supervision, points à travailler en inter-séances, observations du thérapeute.</div>
+      <div class="form-group">
+        <label>Supervision</label>
+        <textarea id="p-supervision" rows="12" placeholder="Points à apporter en supervision&#10;Contre-transfert&#10;Hypothèses thérapeutiques&#10;…"></textarea>
+      </div>
     </div>
 
     <div class="modal-actions">
@@ -517,9 +568,60 @@
 
 <!-- ── Modal Vue Séance ── -->
 <div class="modal-overlay hidden" id="modal-seance-view">
-  <div class="modal">
+  <div class="modal" style="max-width:580px;">
     <button class="modal-close" onclick="closeModal('modal-seance-view')">✕</button>
     <div id="seance-view-content"></div>
+  </div>
+</div>
+
+<!-- ── Modal Suivi Séance ── -->
+<div class="modal-overlay hidden" id="modal-suivi-seance">
+  <div class="modal" style="max-width:580px;">
+    <button class="modal-close" onclick="closeModal('modal-suivi-seance')">✕</button>
+    <h2 class="modal-title" id="suivi-seance-title">Suivi thérapeutique</h2>
+    <input type="hidden" id="suivi-seance-id">
+    <input type="hidden" id="suivi-patient-id">
+
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="showTab('sv-tab-historique', this)">Historique</button>
+      <button class="tab-btn" onclick="showTab('sv-tab-diagat', this)">Diagnostic AT</button>
+      <button class="tab-btn" onclick="showTab('sv-tab-supervision', this)">Supervision</button>
+    </div>
+
+    <!-- Historique -->
+    <div id="sv-tab-historique" data-tab>
+      <div class="suivi-section-hint">Antécédents, contexte de vie, histoire personnelle.</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <textarea id="sv-historique-new" rows="3" placeholder="Nouvelle observation…"></textarea>
+      </div>
+      <div id="sv-historique-existing" class="suivi-existing"></div>
+    </div>
+
+    <!-- Diagnostic AT -->
+    <div id="sv-tab-diagat" data-tab style="display:none;">
+      <div class="suivi-section-hint">Analyse Transactionnelle : états du moi, jeux, scénarios…</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <textarea id="sv-diagat-new" rows="3" placeholder="Nouvelle observation AT…"></textarea>
+      </div>
+      <div id="sv-diagat-existing" class="suivi-existing"></div>
+    </div>
+
+    <!-- Supervision -->
+    <div id="sv-tab-supervision" data-tab style="display:none;">
+      <div class="suivi-section-hint">Points à travailler, hypothèses thérapeutiques, contre-transfert.</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <textarea id="sv-supervision-new" rows="3" placeholder="Nouvelle note de supervision…"></textarea>
+      </div>
+      <div id="sv-supervision-existing" class="suivi-existing"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-suivi-seance')">Fermer</button>
+      <button class="btn btn-primary" onclick="saveSuiviSeance()">💾 Enregistrer les notes</button>
+    </div>
   </div>
 </div>
 
@@ -702,6 +804,72 @@
       <button class="btn btn-secondary" onclick="document.getElementById('modal-reglement').classList.add('hidden')">Annuler</button>
       <button class="btn btn-success" onclick="confirmerReglement()">💶 Confirmer le règlement</button>
     </div>
+  </div>
+</div>
+
+<!-- ── Modal Import Google Agenda ── -->
+<div class="modal-overlay hidden" id="modal-gcal-import">
+  <div class="modal" style="max-width:720px;">
+    <button class="modal-close" onclick="closeModal('modal-gcal-import')">✕</button>
+    <h2 class="modal-title">📅 Importer depuis Google Agenda</h2>
+
+    <!-- Étape 1 : choix du calendrier + plage -->
+    <div id="gcal-step-calendars">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Calendrier</label>
+          <select id="gcal-cal-select" style="font-size:13px;"></select>
+        </div>
+        <div class="form-group">
+          <label>Du</label>
+          <input type="date" id="gcal-date-from">
+        </div>
+        <div class="form-group">
+          <label>Au</label>
+          <input type="date" id="gcal-date-to">
+        </div>
+      </div>
+      <div class="modal-actions" style="padding-top:0;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-gcal-import')">Annuler</button>
+        <button class="btn btn-primary" onclick="gcalLoadEvents()">Charger les événements →</button>
+      </div>
+    </div>
+
+    <!-- Étape 2 : tableau de rapprochement -->
+    <div id="gcal-step-events" style="display:none;">
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;">
+        <span style="font-size:13px;color:var(--warm-mid);">Associez chaque événement à un patient :</span>
+        <button class="btn btn-secondary btn-xs" onclick="gcalSelectAll(true)">Tout sélectionner</button>
+        <button class="btn btn-secondary btn-xs" onclick="gcalSelectAll(false)">Tout désélectionner</button>
+        <button class="btn btn-secondary btn-xs" onclick="document.getElementById('gcal-step-events').style.display='none';document.getElementById('gcal-step-calendars').style.display='';">← Retour</button>
+      </div>
+
+      <div style="overflow-x:auto;max-height:52vh;overflow-y:auto;border:1px solid var(--beige-mid);border-radius:var(--radius-sm);">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:var(--beige);position:sticky;top:0;">
+              <th style="padding:.5rem;width:36px;"></th>
+              <th style="padding:.5rem;text-align:left;">Date</th>
+              <th style="padding:.5rem;text-align:left;">Horaire</th>
+              <th style="padding:.5rem;text-align:left;">Titre Google</th>
+              <th style="padding:.5rem;text-align:left;min-width:160px;">Patient</th>
+            </tr>
+          </thead>
+          <tbody id="gcal-events-tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:.5rem;font-size:12px;color:var(--warm-mid);">
+        Les événements "Nouveau patient" créeront automatiquement une fiche patient à partir du titre de l'événement.
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-gcal-import')">Annuler</button>
+        <button class="btn btn-primary" onclick="gcalConfirmImport()">✓ Importer la sélection</button>
+      </div>
+    </div>
+
+    <div id="gcal-import-log" style="margin-top:.5rem;font-size:12px;color:var(--warm-mid);min-height:1.2em;"></div>
   </div>
 </div>
 

@@ -1,33 +1,47 @@
-/* ══════════════════════════════════════════════
-   Cabinet de Psychothérapie — Logique applicative
-   ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   Cabinet de Psychothérapie — app.js
+   ══════════════════════════════════════════════════════ */
 
 'use strict';
 
-// ════════════════════════════════════════
-// DATA STORE
-// ════════════════════════════════════════
-let DB = { patients: [], seances: [], factures: [], nextNum: 1, indisponibilites: [] };
+// ════════════════════════════════════════════════════════
+// DONNÉES & PERSISTANCE
+// ════════════════════════════════════════════════════════
+
+let DB = {
+  patients:                [],
+  seances:                 [],
+  factures:                [],
+  nextNum:                 1,
+  indisponibilites:        [],
+  indisponibilites_regles: []
+};
+
 let CFG = {
-  prenom:'', nom:'', titre:'', formation:'',
-  adresse:'', cp:'', ville:'', tel:'', email:'',
-  siret:'', tvaNum:'', tvaMention:'', tarif: 60, delai: 30,
-  iban:'', bic:'', banque:'', paiements:'Espèces, chèque, virement bancaire'
+  prenom: '', nom: '', titre: '', formation: '',
+  adresse: '', cp: '', ville: '', tel: '', email: '',
+  siret: '', tvaNum: '', tvaMention: '',
+  tarif: 60, delai: 30,
+  iban: '', bic: '', banque: '',
+  paiements: 'Espèces, chèque, virement bancaire',
+  logo: ''  // base64 du logo cabinet (affiché sur les factures)
 };
 
 function dbLoad() {
-  try { const d = localStorage.getItem('psy-db');  if (d) DB  = JSON.parse(d); } catch(e) {}
-  try { const c = localStorage.getItem('psy-cfg'); if (c) CFG = { ...CFG, ...JSON.parse(c) }; } catch(e) {}
+  try { const d = localStorage.getItem('psy-db');  if (d) DB  = JSON.parse(d); } catch (e) {}
+  try { const c = localStorage.getItem('psy-cfg'); if (c) CFG = { ...CFG, ...JSON.parse(c) }; } catch (e) {}
   if (!DB.indisponibilites)        DB.indisponibilites        = [];
   if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
 }
-function dbSave()  { try { localStorage.setItem('psy-db',  JSON.stringify(DB));  } catch(e) {} }
-function cfgSave() { try { localStorage.setItem('psy-cfg', JSON.stringify(CFG)); } catch(e) {} }
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function dbSave()  { try { localStorage.setItem('psy-db',  JSON.stringify(DB));  } catch (e) {} }
+function cfgSave() { try { localStorage.setItem('psy-cfg', JSON.stringify(CFG)); } catch (e) {} }
+function uid()     { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-// ════════════════════════════════════════
-// UTILS
-// ════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════
+// UTILITAIRES
+// ════════════════════════════════════════════════════════
+
 const MOIS_LONG  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const MOIS_SHORT = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
 const MOIS_NOMS  = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
@@ -35,80 +49,120 @@ const MOIS_NOMS  = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','
 function formatDate(d) {
   if (!d) return '—';
   const [y, m, j] = d.split('-');
-  return parseInt(j) + ' ' + MOIS_LONG[parseInt(m)-1] + ' ' + y;
+  return `${parseInt(j)} ${MOIS_LONG[parseInt(m) - 1]} ${y}`;
 }
+
 function formatDateShort(d) {
   if (!d) return '—';
   const [y, m, j] = d.split('-');
-  return parseInt(j) + ' ' + MOIS_SHORT[parseInt(m)-1] + ' ' + y;
+  return `${parseInt(j)} ${MOIS_SHORT[parseInt(m) - 1]} ${y}`;
 }
-function today() { return new Date().toISOString().split('T')[0]; }
+
+function today()       { return new Date().toISOString().split('T')[0]; }
+function fmtMoney(n)   { return n.toFixed(2).replace('.', ',') + ' €'; }
+function fmtNum(n)     { return n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function toMin(h)      { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; }
+
 function addDays(dateStr, n) {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + n);
   return d.toISOString().split('T')[0];
 }
-function fmtMoney(n) { return n.toFixed(2).replace('.', ',') + ' €'; }
-function fmtNum(n)   { return n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+
+function getPatientName(id, upper = true) {
+  const p = DB.patients.find(p => p.id === id);
+  if (!p) return '—';
+  return upper ? `${p.prenom} ${p.nom.toUpperCase()}` : `${p.prenom} ${p.nom}`;
+}
 
 function toast(msg, type = '') {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast' + (type ? ' ' + type : '');
+  t.className   = 'toast' + (type ? ' ' + type : '');
   t.classList.remove('hidden');
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.add('hidden'), 3000);
 }
 
-function getPatientName(id, upper = true) {
-  const p = DB.patients.find(p => p.id === id);
-  if (!p) return '—';
-  return upper ? p.prenom + ' ' + p.nom.toUpperCase() : p.prenom + ' ' + p.nom;
+
+// ════════════════════════════════════════════════════════
+// LOGO
+// ════════════════════════════════════════════════════════
+
+function handleLogoUpload(pfx) {
+  const file = document.getElementById(`${pfx}-logo-input`).files[0];
+  if (!file) return;
+  if (file.size > 500 * 1024) { alert('Logo trop volumineux (max 500 Ko).'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    CFG.logo = e.target.result;
+    cfgSave();
+    refreshLogoPreview(pfx);
+    toast('Logo enregistré ✓', 'success');
+  };
+  reader.readAsDataURL(file);
 }
 
-// ════════════════════════════════════════
-// CONFIG / SETUP
-// ════════════════════════════════════════
+function removeLogo(pfx) {
+  CFG.logo = '';
+  cfgSave();
+  refreshLogoPreview(pfx);
+  document.getElementById(`${pfx}-logo-input`).value = '';
+  toast('Logo supprimé');
+}
+
+function refreshLogoPreview(pfx) {
+  const img = document.getElementById(`${pfx}-logo-preview`);
+  const ph  = document.getElementById(`${pfx}-logo-placeholder`);
+  const rm  = document.getElementById(`${pfx}-logo-remove`);
+  if (!img) return;
+  if (CFG.logo) {
+    img.src = CFG.logo;
+    img.style.display = 'block';
+    ph.style.display  = 'none';
+    rm.style.display  = 'inline-flex';
+  } else {
+    img.src = '';
+    img.style.display = 'none';
+    ph.style.display  = '';
+    rm.style.display  = 'none';
+  }
+}
+
+
+// ════════════════════════════════════════════════════════
+// CONFIGURATION & PARAMÈTRES
+// ════════════════════════════════════════════════════════
+
 function isConfigured() { return !!(CFG.prenom && CFG.nom && CFG.siret); }
 
 function toggleTvaCustom(pfx) {
-  const v = document.getElementById(pfx + '-tva-mention').value;
-  document.getElementById(pfx + '-tva-custom-group').style.display = v === 'custom' ? 'block' : 'none';
+  const v = document.getElementById(`${pfx}-tva-mention`).value;
+  document.getElementById(`${pfx}-tva-custom-group`).style.display = v === 'custom' ? 'block' : 'none';
 }
 
 function getTvaMention(pfx) {
-  const v = document.getElementById(pfx + '-tva-mention').value;
-  return v === 'custom' ? (document.getElementById(pfx + '-tva-custom').value.trim() || '') : v;
+  const v = document.getElementById(`${pfx}-tva-mention`).value;
+  return v === 'custom' ? (document.getElementById(`${pfx}-tva-custom`).value.trim() || '') : v;
 }
 
 function collectCfg(pfx) {
+  const g = id => document.getElementById(`${pfx}-${id}`).value.trim();
   return {
-    prenom:     document.getElementById(pfx+'-prenom').value.trim(),
-    nom:        document.getElementById(pfx+'-nom').value.trim(),
-    titre:      document.getElementById(pfx+'-titre').value.trim(),
-    formation:  document.getElementById(pfx+'-formation').value.trim(),
-    adresse:    document.getElementById(pfx+'-adresse').value.trim(),
-    cp:         document.getElementById(pfx+'-cp').value.trim(),
-    ville:      document.getElementById(pfx+'-ville').value.trim(),
-    tel:        document.getElementById(pfx+'-tel').value.trim(),
-    email:      document.getElementById(pfx+'-email').value.trim(),
-    siret:      document.getElementById(pfx+'-siret').value.trim(),
-    tvaNum:     document.getElementById(pfx+'-tva-num').value.trim(),
-    tvaMention: getTvaMention(pfx),
-    tarif:      parseFloat(document.getElementById(pfx+'-tarif').value) || 60,
-    delai:      parseInt(document.getElementById(pfx+'-delai').value) || 30,
-    iban:       document.getElementById(pfx+'-iban').value.trim(),
-    bic:        document.getElementById(pfx+'-bic').value.trim(),
-    banque:     document.getElementById(pfx+'-banque').value.trim(),
-    paiements:  document.getElementById(pfx+'-paiements').value.trim()
+    prenom: g('prenom'), nom: g('nom'), titre: g('titre'), formation: g('formation'),
+    adresse: g('adresse'), cp: g('cp'), ville: g('ville'), tel: g('tel'), email: g('email'),
+    siret: g('siret'), tvaNum: g('tva-num'), tvaMention: getTvaMention(pfx),
+    tarif:    parseFloat(document.getElementById(`${pfx}-tarif`).value) || 60,
+    delai:    parseInt(document.getElementById(`${pfx}-delai`).value)   || 30,
+    iban: g('iban'), bic: g('bic'), banque: g('banque'), paiements: g('paiements')
   };
 }
 
 function saveConfig() {
   const cfg = collectCfg('c');
   if (!cfg.prenom || !cfg.nom) { alert('Prénom et nom sont obligatoires.'); return; }
-  if (!cfg.siret) { alert('Le SIRET est obligatoire pour émettre des factures.'); return; }
-  CFG = cfg;
+  if (!cfg.siret)              { alert('Le SIRET est obligatoire pour émettre des factures.'); return; }
+  CFG = { ...CFG, ...cfg };   // préserve CFG.logo
   cfgSave();
   document.getElementById('setup-screen').classList.add('hidden');
   updateHeader();
@@ -117,8 +171,7 @@ function saveConfig() {
 }
 
 function saveSettings() {
-  const cfg = collectCfg('s');
-  CFG = { ...CFG, ...cfg };
+  CFG = { ...CFG, ...collectCfg('s') };   // préserve CFG.logo
   const nn = parseInt(document.getElementById('s-next-num').value);
   if (nn > 0) DB.nextNum = nn;
   cfgSave(); dbSave();
@@ -127,17 +180,18 @@ function saveSettings() {
 }
 
 function loadSettingsForm() {
-  const map = {
-    prenom:'s-prenom', nom:'s-nom', titre:'s-titre', formation:'s-formation',
-    adresse:'s-adresse', cp:'s-cp', ville:'s-ville', tel:'s-tel', email:'s-email',
-    siret:'s-siret', tvaNum:'s-tva-num', iban:'s-iban', bic:'s-bic',
-    banque:'s-banque', paiements:'s-paiements'
+  const fields = {
+    prenom: 's-prenom', nom: 's-nom', titre: 's-titre', formation: 's-formation',
+    adresse: 's-adresse', cp: 's-cp', ville: 's-ville', tel: 's-tel', email: 's-email',
+    siret: 's-siret', tvaNum: 's-tva-num',
+    iban: 's-iban', bic: 's-bic', banque: 's-banque', paiements: 's-paiements'
   };
-  Object.entries(map).forEach(([k, id]) => { const el = document.getElementById(id); if (el) el.value = CFG[k] || ''; });
-  document.getElementById('s-tarif').value  = CFG.tarif;
-  document.getElementById('s-delai').value  = CFG.delai || 30;
+  Object.entries(fields).forEach(([k, id]) => { const el = document.getElementById(id); if (el) el.value = CFG[k] || ''; });
+  document.getElementById('s-tarif').value    = CFG.tarif;
+  document.getElementById('s-delai').value    = CFG.delai || 30;
   document.getElementById('s-next-num').value = DB.nextNum;
-  const sel = document.getElementById('s-tva-mention');
+
+  const sel   = document.getElementById('s-tva-mention');
   const known = Array.from(sel.options).map(o => o.value);
   if (known.includes(CFG.tvaMention)) {
     sel.value = CFG.tvaMention;
@@ -146,16 +200,43 @@ function loadSettingsForm() {
     document.getElementById('s-tva-custom').value = CFG.tvaMention;
     document.getElementById('s-tva-custom-group').style.display = 'block';
   }
+
+  // Google Agenda
+  const cidEl = document.getElementById('s-gcal-client-id');
+  if (cidEl && CFG.gcalClientId) cidEl.value = CFG.gcalClientId;
+  const hint = document.getElementById('gcal-origin-hint');
+  if (hint) hint.textContent = location.origin;
+  renderGcalStatus();
+
+  refreshLogoPreview('s');
+}
+
+// Ouvre l'import Google si connecté, sinon guide vers la connexion
+function openGcalImportOrConnect() {
+  const tok = gcalToken();
+  const exp = parseInt(sessionStorage.getItem('psy-gcal-exp') || '0');
+  if (tok && Date.now() < exp) {
+    document.getElementById('gcal-date-from').value = today();
+    document.getElementById('gcal-date-to').value   = addDays(today(), 30);
+    openGcalImportPanel();
+  } else if (CFG.gcalClientId) {
+    if (confirm('Connexion à Google Agenda requise.\nVous allez être redirigé vers Google pour autoriser l\'accès en lecture.\nContinuer ?')) {
+      gcalConnect();
+    }
+  } else {
+    showPage('parametres', document.querySelectorAll('.nav-btn')[4]);
+    toast('Configurez votre Client ID Google dans les paramètres.', '');
+  }
 }
 
 function updateHeader() {
   if (!CFG.prenom) return;
   const ini = (CFG.prenom[0] + (CFG.nom[0] || '')).toUpperCase();
-  document.getElementById('hdr-initials').textContent = ini;
-  document.getElementById('hdr-name').textContent     = CFG.prenom + ' ' + CFG.nom.toUpperCase();
-  document.getElementById('hdr-sub').textContent      = CFG.titre || 'Cabinet de Psychothérapie';
-  document.getElementById('dash-greeting').textContent = 'Bonjour, ' + CFG.prenom;
-  document.title = 'Cabinet ' + CFG.prenom + ' ' + CFG.nom;
+  document.getElementById('hdr-initials').textContent  = ini;
+  document.getElementById('hdr-name').textContent      = `${CFG.prenom} ${CFG.nom.toUpperCase()}`;
+  document.getElementById('hdr-sub').textContent       = CFG.titre || 'Cabinet de Psychothérapie';
+  document.getElementById('dash-greeting').textContent = `Bonjour, ${CFG.prenom}`;
+  document.title = `Cabinet ${CFG.prenom} ${CFG.nom}`;
 }
 
 function resetApp() {
@@ -165,18 +246,18 @@ function resetApp() {
   location.reload();
 }
 
-// ════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════
 // EXPORT / IMPORT
-// ════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+
 function exportData() {
   const data = { db: DB, cfg: CFG, exportedAt: new Date().toISOString(), version: '1.0' };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url;
-  a.download = 'cabinet-backup-' + today() + '.json';
+  a.href     = URL.createObjectURL(blob);
+  a.download = `cabinet-backup-${today()}.json`;
   a.click();
-  URL.revokeObjectURL(url);
   toast('Export téléchargé ✓', 'success');
 }
 
@@ -184,49 +265,356 @@ function importData() {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = '.json';
   input.onchange = e => {
-    const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
       try {
         const data = JSON.parse(ev.target.result);
         if (!data.db || !data.cfg) throw new Error('Format invalide');
-        if (!confirm('Remplacer toutes les données actuelles par celles du fichier importé ?')) return;
-        DB  = data.db;
-        CFG = { ...CFG, ...data.cfg };
-        dbSave(); cfgSave();
-        updateHeader();
-        renderDashboard();
+        if (!confirm('Remplacer toutes les données actuelles ?')) return;
+        DB = data.db; CFG = { ...CFG, ...data.cfg };
+        dbSave(); cfgSave(); updateHeader(); renderDashboard();
+        refreshLogoPreview('s');
         toast('Import réussi ✓', 'success');
-      } catch(err) {
-        alert('Fichier invalide : ' + err.message);
-      }
+      } catch (err) { alert('Fichier invalide : ' + err.message); }
     };
-    reader.readAsText(file);
+    reader.readAsText(e.target.files[0]);
   };
   input.click();
 }
 
-// ════════════════════════════════════════
+// Import depuis l'écran de configuration initiale
+function importDataFromSetup() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.db || !data.cfg) throw new Error('Format invalide');
+        DB  = data.db;
+        CFG = { ...CFG, ...data.cfg };
+        if (!DB.indisponibilites)        DB.indisponibilites        = [];
+        if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
+        dbSave(); cfgSave();
+        // Basculer directement dans l'application
+        document.getElementById('setup-screen').classList.add('hidden');
+        updateHeader();
+        refreshLogoPreview('s');
+        renderDashboard();
+        toast('Données importées avec succès ✓', 'success');
+      } catch (err) { alert('Fichier invalide : ' + err.message); }
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+
+
+// ════════════════════════════════════════════════════════
+// GOOGLE AGENDA — Import lecture seule
+// ════════════════════════════════════════════════════════
+
+const GCAL_SCOPE    = 'https://www.googleapis.com/auth/calendar.readonly';
+const GCAL_API      = 'https://www.googleapis.com/calendar/v3';
+
+// Token stocké en sessionStorage (expire à la fermeture d'onglet)
+function gcalToken()       { return sessionStorage.getItem('psy-gcal-token'); }
+function gcalSaveToken(t)  { sessionStorage.setItem('psy-gcal-token', t); }
+function gcalClearToken()  { sessionStorage.removeItem('psy-gcal-token'); sessionStorage.removeItem('psy-gcal-exp'); }
+
+// Capture du token au retour OAuth (fragment #access_token=…)
+;(function catchOAuth() {
+  if (!location.hash.includes('access_token')) return;
+  const p   = new URLSearchParams(location.hash.slice(1));
+  const tok = p.get('access_token'); if (!tok) return;
+  const exp = parseInt(p.get('expires_in') || '3600');
+  if (sessionStorage.getItem('psy-gcal-state') && p.get('state') !== sessionStorage.getItem('psy-gcal-state')) return;
+  gcalSaveToken(tok);
+  sessionStorage.setItem('psy-gcal-exp', Date.now() + exp * 1000);
+  sessionStorage.removeItem('psy-gcal-state');
+  history.replaceState(null, '', location.pathname);
+  // Ouvrir directement le panneau d'import après connexion
+  setTimeout(() => {
+    if (isConfigured()) openGcalImportPanel();
+  }, 300);
+})();
+
+function gcalConnect() {
+  const clientId = CFG.gcalClientId;
+  if (!clientId) { alert('Veuillez d\'abord saisir votre Client ID Google dans les paramètres.'); return; }
+  const state = 'gcal-' + Date.now();
+  sessionStorage.setItem('psy-gcal-state', state);
+  const params = new URLSearchParams({
+    client_id:     clientId,
+    redirect_uri:  location.origin + location.pathname,
+    response_type: 'token',
+    scope:         GCAL_SCOPE,
+    state,
+    prompt:        'select_account'
+  });
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+}
+
+function gcalDisconnect() {
+  gcalClearToken();
+  renderGcalStatus();
+  toast('Déconnecté de Google Agenda');
+}
+
+function saveGcalClientId() {
+  const id = document.getElementById('s-gcal-client-id')?.value.trim();
+  if (!id) { alert('Client ID requis.'); return; }
+  CFG.gcalClientId = id;
+  cfgSave();
+  renderGcalStatus();
+  toast('Client ID enregistré ✓', 'success');
+}
+
+function renderGcalStatus() {
+  const box = document.getElementById('gcal-status-box'); if (!box) return;
+  const tok    = gcalToken();
+  const exp    = parseInt(sessionStorage.getItem('psy-gcal-exp') || '0');
+  const alive  = tok && Date.now() < exp;
+  const hasId  = !!CFG.gcalClientId;
+
+  if (alive) {
+    const mins = Math.round((exp - Date.now()) / 60000);
+    box.innerHTML = `<div class="info-box sage">
+      <strong>✓ Connecté à Google Agenda</strong> — session valide encore ~${mins} min<br>
+      <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="openGcalImportPanel()">📥 Importer des séances</button>
+        <button class="btn btn-secondary btn-sm" onclick="gcalDisconnect()">Déconnecter</button>
+      </div>
+    </div>`;
+  } else if (hasId) {
+    box.innerHTML = `<div class="info-box terra" style="margin-bottom:.5rem;">
+      <strong>Non connecté</strong> — autorisez l'accès en lecture à votre Google Agenda.
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="gcalConnect()">🔗 Connecter Google Agenda</button>`;
+  } else {
+    box.innerHTML = `<p style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:.5rem;">
+      Importez vos rendez-vous Google Agenda comme séances. Renseignez d'abord votre Client ID OAuth ci-dessous.</p>`;
+  }
+}
+
+async function gcalFetch(path) {
+  const tok = gcalToken();
+  if (!tok) throw new Error('Non connecté');
+  const r = await fetch(GCAL_API + path, { headers: { Authorization: 'Bearer ' + tok } });
+  if (r.status === 401) { gcalClearToken(); renderGcalStatus(); throw new Error('Session expirée, reconnectez-vous.'); }
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error?.message || 'Erreur ' + r.status); }
+  return r.json();
+}
+
+// Ouvre le panneau d'import Google Agenda
+async function openGcalImportPanel() {
+  // Charger la liste des calendriers
+  const log = document.getElementById('gcal-import-log');
+  document.getElementById('modal-gcal-import').classList.remove('hidden');
+  document.getElementById('gcal-step-calendars').style.display = '';
+  document.getElementById('gcal-step-events').style.display    = 'none';
+  if (log) log.textContent = '⏳ Chargement des calendriers…';
+
+  try {
+    const data = await gcalFetch('/users/me/calendarList');
+    const cals  = (data.items || []).filter(c => c.accessRole !== 'freeBusyReader');
+    const sel   = document.getElementById('gcal-cal-select');
+    sel.innerHTML = cals.map(c =>
+      `<option value="${escAttr(c.id)}"${c.primary ? ' selected' : ''}>${escAttr(c.summary)}${c.primary ? ' (principal)' : ''}</option>`
+    ).join('');
+    if (log) log.textContent = `${cals.length} calendrier(s) disponible(s). Choisissez une plage.`;
+  } catch (e) {
+    if (log) log.textContent = '✕ ' + e.message;
+  }
+}
+
+function escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+async function gcalLoadEvents() {
+  const calId  = encodeURIComponent(document.getElementById('gcal-cal-select').value || 'primary');
+  const from   = document.getElementById('gcal-date-from').value;
+  const to     = document.getElementById('gcal-date-to').value;
+  const log    = document.getElementById('gcal-import-log');
+  if (!from || !to) { alert('Sélectionnez une plage de dates.'); return; }
+
+  if (log) log.textContent = '⏳ Chargement des événements…';
+  try {
+    const params = new URLSearchParams({
+      timeMin:      new Date(from).toISOString(),
+      timeMax:      new Date(to + 'T23:59:59').toISOString(),
+      singleEvents: 'true', orderBy: 'startTime', maxResults: '500'
+    });
+    const data   = await gcalFetch(`/calendars/${calId}/events?${params}`);
+    const events = (data.items || []).filter(e => e.start?.dateTime); // exclure journées entières
+
+    if (!events.length) { if (log) log.textContent = 'Aucun événement avec horaire dans cette période.'; return; }
+
+    // Construire les propositions de rapprochement
+    buildRapprochement(events);
+    document.getElementById('gcal-step-calendars').style.display = 'none';
+    document.getElementById('gcal-step-events').style.display    = '';
+    if (log) log.textContent = `${events.length} événement(s) chargé(s).`;
+  } catch (e) {
+    if (log) log.textContent = '✕ ' + e.message;
+    toast(e.message, 'danger');
+  }
+}
+
+// Construit le tableau de rapprochement événement ↔ patient
+function buildRapprochement(events) {
+  const alreadyImported = new Set(DB.seances.map(s => s.gcalEventId).filter(Boolean));
+
+  const rows = events.map(ev => {
+    const start    = new Date(ev.start.dateTime);
+    const end      = new Date(ev.end.dateTime);
+    const dateStr  = start.toISOString().split('T')[0];
+    const heure    = start.toTimeString().slice(0, 5);
+    const duree    = Math.round((end - start) / 60000);
+    const titre    = ev.summary || '(sans titre)';
+    const done     = alreadyImported.has(ev.id);
+
+    // Tentative de rapprochement automatique par nom
+    const matchedPat = findPatientByName(titre);
+    const patOptions = DB.patients.map(p =>
+      `<option value="${p.id}"${matchedPat?.id === p.id ? ' selected' : ''}>${p.prenom} ${p.nom.toUpperCase()}</option>`
+    ).join('');
+
+    return { ev, dateStr, heure, duree, titre, done, matchedPat, patOptions };
+  });
+
+  // Stocker pour utilisation lors de la confirmation
+  window._gcalRows = rows;
+
+  const tbody = document.getElementById('gcal-events-tbody');
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr class="${r.done ? 'gcal-row-done' : ''}">
+      <td style="text-align:center;">
+        <input type="checkbox" class="gcal-cb" data-idx="${i}" ${r.done ? 'disabled checked' : 'checked'} style="width:auto;accent-color:var(--sage);">
+      </td>
+      <td style="font-size:13px;">${formatDate(r.dateStr)}</td>
+      <td style="font-size:13px;">${r.heure} · ${r.duree} min</td>
+      <td>
+        <div style="font-size:13px;font-weight:500;">${escHtml(r.titre)}</div>
+        ${r.done ? '<span style="font-size:11px;color:var(--sage-dark);">✓ déjà importé</span>' : ''}
+      </td>
+      <td>
+        ${r.done ? '<span style="font-size:12px;color:var(--warm-mid);">—</span>' : `
+        <select class="gcal-pat-sel" data-idx="${i}" style="font-size:12px;max-width:160px;">
+          <option value="">— Nouveau patient —</option>
+          ${r.patOptions}
+        </select>
+        ${r.matchedPat ? `<div style="font-size:11px;color:var(--sage-dark);margin-top:2px;">✓ trouvé : ${r.matchedPat.prenom}</div>` : '<div style="font-size:11px;color:var(--terra);margin-top:2px;">Aucun patient trouvé</div>'}`}
+      </td>
+    </tr>`).join('');
+}
+
+// Cherche un patient dont le nom complet apparaît dans le titre de l'événement
+function findPatientByName(titre) {
+  const t = titre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return DB.patients.find(p => {
+    const nom    = p.nom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const prenom = p.prenom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return t.includes(nom) || t.includes(prenom) || t.includes(`${prenom} ${nom}`) || t.includes(`${nom} ${prenom}`);
+  }) || null;
+}
+
+function gcalSelectAll(checked) {
+  document.querySelectorAll('.gcal-cb:not(:disabled)').forEach(cb => cb.checked = checked);
+}
+
+function gcalConfirmImport() {
+  const rows    = window._gcalRows || [];
+  const checked = Array.from(document.querySelectorAll('.gcal-cb:checked:not(:disabled)')).map(cb => parseInt(cb.dataset.idx));
+  if (!checked.length) { alert('Sélectionnez au moins un événement.'); return; }
+
+  let imported = 0, created = 0, skipped = 0;
+  const newPatients = {};  // titre → patientId (pour éviter doublons si même nom sur plusieurs events)
+
+  checked.forEach(i => {
+    const r   = rows[i];
+    const sel = document.querySelector(`.gcal-pat-sel[data-idx="${i}"]`);
+    let patientId = sel ? sel.value : '';
+
+    // Créer un nouveau patient si non lié
+    if (!patientId) {
+      const key = r.titre.trim().toLowerCase();
+      if (newPatients[key]) {
+        patientId = newPatients[key];
+      } else {
+        // Essayer de déduire prénom / nom depuis le titre
+        const parts = r.titre.trim().split(/\s+/);
+        const newP  = {
+          id:        uid(),
+          createdAt: new Date().toISOString(),
+          prenom:    parts[0] || r.titre,
+          nom:       parts.slice(1).join(' ') || '',
+          tarif:     CFG.tarif || 60,
+          statut:    'actif',
+          motif: '', notes: '', historique: '', diagnosticAT: '', supervision: '',
+          tel: '', email: '', adresse: '', naissance: ''
+        };
+        DB.patients.push(newP);
+        patientId = newP.id;
+        newPatients[key] = newP.id;
+        created++;
+      }
+    }
+
+    // Vérifier doublon par date+heure
+    const existsAlready = DB.seances.find(s => s.date === r.dateStr && s.heure === r.heure && s.patientId === patientId);
+    if (existsAlready) { skipped++; return; }
+
+    DB.seances.push({
+      id:          uid(),
+      patientId,
+      date:        r.dateStr,
+      heure:       r.heure,
+      duree:       r.duree,
+      tarif:       patientId ? (DB.patients.find(p => p.id === patientId)?.tarif || CFG.tarif) : CFG.tarif,
+      statut:      'planifié',
+      paiement:    '',
+      notes:       r.titre !== 'Séance' ? r.titre : '',
+      facture:     null,
+      gcalEventId: r.ev.id
+    });
+    imported++;
+  });
+
+  dbSave();
+  document.getElementById('modal-gcal-import').classList.add('hidden');
+  renderSeances(); renderDashboard();
+
+  const msg = [`${imported} séance(s) importée(s)`];
+  if (created)  msg.push(`${created} patient(s) créé(s)`);
+  if (skipped)  msg.push(`${skipped} doublon(s) ignoré(s)`);
+  toast(msg.join(' · ') + ' ✓', 'success');
+}
+
+
+// ════════════════════════════════════════════════════════
 // NAVIGATION
-// ════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+
 function showPage(id, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   btn.classList.add('active');
-  if (id === 'dashboard')   renderDashboard();
-  if (id === 'patients')    renderPatients();
-  if (id === 'seances')     { populateFilterPat(); renderSeances(); }
-  if (id === 'factures')    renderFactures();
-  if (id === 'parametres')  loadSettingsForm();
+  if (id === 'dashboard')  renderDashboard();
+  if (id === 'patients')   renderPatients();
+  if (id === 'seances')    { populateFilterPat(); renderSeances(); }
+  if (id === 'factures')   renderFactures();
+  if (id === 'parametres') loadSettingsForm();
 }
 
 function openModal(id) {
   document.getElementById(id).classList.remove('hidden');
-  if (id === 'modal-patient')  resetPatientForm();
-  if (id === 'modal-seance')   resetSeanceForm();
-  if (id === 'modal-facture')  initFactureModal();
+  if (id === 'modal-patient') resetPatientForm();
+  if (id === 'modal-seance')  resetSeanceForm();
+  if (id === 'modal-facture') initFactureModal();
 }
+
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 function showTab(tabId, btn) {
@@ -237,25 +625,28 @@ function showTab(tabId, btn) {
   btn.classList.add('active');
 }
 
-// Close on backdrop click
 document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', e => { if (e.target === o) o.classList.add('hidden'); });
 });
 
-// ════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════
 // PATIENTS
-// ════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+
 function resetPatientForm(p = null) {
   document.getElementById('p-edit-id').value = '';
   document.getElementById('mp-title').textContent = 'Nouveau patient';
-  ['p-prenom','p-nom','p-tel','p-email','p-adresse','p-motif','p-notes'].forEach(f => {
-    document.getElementById(f).value = p ? (p[f.replace('p-','')] || '') : '';
+  ['p-prenom', 'p-nom', 'p-tel', 'p-email', 'p-adresse', 'p-motif', 'p-notes'].forEach(f => {
+    document.getElementById(f).value = p ? (p[f.replace('p-', '')] || '') : '';
   });
-  document.getElementById('p-tarif').value   = p ? p.tarif   : (CFG.tarif || 60);
-  document.getElementById('p-statut').value  = p ? p.statut  : 'actif';
-  document.getElementById('p-naissance').value = p ? (p.naissance || '') : '';
-  const firstTab = document.querySelector('#modal-patient .tab-btn');
-  showTab('tab-infos', firstTab);
+  document.getElementById('p-tarif').value       = p ? p.tarif       : (CFG.tarif || 60);
+  document.getElementById('p-statut').value      = p ? p.statut      : 'actif';
+  document.getElementById('p-naissance').value   = p ? (p.naissance  || '') : '';
+  document.getElementById('p-historique').value  = p ? (p.historique || '') : '';
+  document.getElementById('p-diagnosticAT').value= p ? (p.diagnosticAT || '') : '';
+  document.getElementById('p-supervision').value = p ? (p.supervision || '') : '';
+  showTab('tab-infos', document.querySelector('#modal-patient .tab-btn'));
 }
 
 function savePatient() {
@@ -266,14 +657,17 @@ function savePatient() {
   const id   = document.getElementById('p-edit-id').value;
   const data = {
     prenom, nom,
-    naissance: document.getElementById('p-naissance').value,
-    tel:       document.getElementById('p-tel').value.trim(),
-    email:     document.getElementById('p-email').value.trim(),
-    adresse:   document.getElementById('p-adresse').value.trim(),
-    tarif:     parseFloat(document.getElementById('p-tarif').value) || CFG.tarif || 60,
-    statut:    document.getElementById('p-statut').value,
-    motif:     document.getElementById('p-motif').value.trim(),
-    notes:     document.getElementById('p-notes').value.trim()
+    naissance:    document.getElementById('p-naissance').value,
+    tel:          document.getElementById('p-tel').value.trim(),
+    email:        document.getElementById('p-email').value.trim(),
+    adresse:      document.getElementById('p-adresse').value.trim(),
+    tarif:        parseFloat(document.getElementById('p-tarif').value) || CFG.tarif || 60,
+    statut:       document.getElementById('p-statut').value,
+    motif:        document.getElementById('p-motif').value.trim(),
+    notes:        document.getElementById('p-notes').value.trim(),
+    historique:   document.getElementById('p-historique').value.trim(),
+    diagnosticAT: document.getElementById('p-diagnosticAT').value.trim(),
+    supervision:  document.getElementById('p-supervision').value.trim()
   };
 
   if (id) {
@@ -283,9 +677,7 @@ function savePatient() {
     data.id = uid(); data.createdAt = new Date().toISOString();
     DB.patients.push(data);
   }
-  dbSave();
-  closeModal('modal-patient');
-  renderPatients();
+  dbSave(); closeModal('modal-patient'); renderPatients();
   toast('Patient enregistré ✓', 'success');
 }
 
@@ -295,25 +687,23 @@ function editPatient(id) {
   document.getElementById('p-edit-id').value = id;
   document.getElementById('mp-title').textContent = 'Modifier le patient';
   resetPatientForm(p);
-  document.getElementById('p-edit-id').value = id; // reset clears it
+  document.getElementById('p-edit-id').value = id;
 }
 
 function deletePatient(id) {
   if (!confirm('Supprimer ce patient ? Ses séances resteront enregistrées.')) return;
   DB.patients = DB.patients.filter(p => p.id !== id);
-  dbSave();
-  closeModal('modal-fiche');
-  renderPatients();
+  dbSave(); closeModal('modal-fiche'); renderPatients();
   toast('Patient supprimé');
 }
 
 function viewPatient(id) {
-  const p = DB.patients.find(p => p.id === id); if (!p) return;
-  const seances = DB.seances.filter(s => s.patientId === id).sort((a,b) => b.date.localeCompare(a.date));
-  const ini = (p.prenom[0] + p.nom[0]).toUpperCase();
-  const age = p.naissance ? Math.floor((Date.now() - new Date(p.naissance)) / 31557600000) + ' ans' : '';
+  const p       = DB.patients.find(p => p.id === id); if (!p) return;
+  const seances = DB.seances.filter(s => s.patientId === id).sort((a, b) => b.date.localeCompare(a.date));
+  const ini     = (p.prenom[0] + p.nom[0]).toUpperCase();
+  const age     = p.naissance ? Math.floor((Date.now() - new Date(p.naissance)) / 31557600000) + ' ans' : '';
 
-  const seancesHTML = seances.length === 0
+  const seancesHTML = !seances.length
     ? '<div style="color:var(--warm-mid);font-size:13px;padding:.5rem 0;">Aucune séance enregistrée</div>'
     : seances.map(s => `
       <div class="seance-line-fiche" onclick="viewSeanceFromFiche('${s.id}','${id}')">
@@ -339,59 +729,158 @@ function viewPatient(id) {
         <button class="btn btn-danger btn-sm" onclick="deletePatient('${id}')">Supprimer</button>
       </div>
     </div>
-
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem;font-size:13px;">
-      ${p.tel    ? `<div><span style="color:var(--warm-mid);">Tél :</span> ${p.tel}</div>` : ''}
-      ${p.email  ? `<div><span style="color:var(--warm-mid);">Email :</span> ${p.email}</div>` : ''}
-      ${p.adresse? `<div style="grid-column:1/-1"><span style="color:var(--warm-mid);">Adresse :</span> ${p.adresse}</div>` : ''}
+      ${p.tel     ? `<div><span style="color:var(--warm-mid);">Tél :</span> ${p.tel}</div>` : ''}
+      ${p.email   ? `<div><span style="color:var(--warm-mid);">Email :</span> ${p.email}</div>` : ''}
+      ${p.adresse ? `<div style="grid-column:1/-1"><span style="color:var(--warm-mid);">Adresse :</span> ${p.adresse}</div>` : ''}
       <div><span style="color:var(--warm-mid);">Tarif :</span> ${p.tarif} € / séance</div>
       <div><span style="color:var(--warm-mid);">Statut :</span> <span class="badge badge-${p.statut === 'actif' ? 'actif' : 'annulé'}">${p.statut}</span></div>
     </div>
 
-    ${p.notes ? `<div class="section-title">Notes thérapeutiques</div><div class="notes-block" style="margin-bottom:1.25rem;">${p.notes}</div>` : ''}
+    ${p.notes ? `<div class="section-title">Notes générales</div><div class="notes-block" style="margin-bottom:1.25rem;">${escHtml(p.notes)}</div>` : ''}
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+    <!-- Sections suivi thérapeutique -->
+    <div class="suivi-tabs-fiche">
+      <div class="tab-group" style="margin-bottom:.75rem;">
+        <button class="tab-btn active" onclick="showFicheTab('fiche-tab-historique',this)">Historique</button>
+        <button class="tab-btn" onclick="showFicheTab('fiche-tab-diagat',this)">Diagnostic AT</button>
+        <button class="tab-btn" onclick="showFicheTab('fiche-tab-supervision',this)">Supervision</button>
+      </div>
+      <div id="fiche-tab-historique">
+        ${ficheTab(p, 'historique', 'Historique', 'Antécédents, contexte de vie, histoire personnelle…')}
+      </div>
+      <div id="fiche-tab-diagat" style="display:none;">
+        ${ficheTab(p, 'diagnosticAT', 'Diagnostic AT', 'États du moi, jeux, scénarios, injonctions…')}
+      </div>
+      <div id="fiche-tab-supervision" style="display:none;">
+        ${ficheTab(p, 'supervision', 'Supervision', 'Points à superviser, hypothèses, contre-transfert…')}
+      </div>
+    </div>
+
+    <!-- Séances -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;margin-top:1.25rem;">
       <div class="section-title" style="margin-bottom:0;">Séances (${seances.length})</div>
       <button class="btn btn-primary btn-sm" onclick="addSeanceForPatient('${id}')">+ Ajouter séance</button>
     </div>
-    <div id="fiche-seances-list">${seancesHTML}</div>
-  `;
+    <div id="fiche-seances-list">${seancesHTML}</div>`;
+
   document.getElementById('modal-fiche').classList.remove('hidden');
 }
 
-function editPatientFromFiche(id) {
-  closeModal('modal-fiche');
-  editPatient(id);
+// Échappe le HTML pour l'affichage sécurisé dans les notes-blocks
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
+// Génère le HTML d'un onglet suivi dans la fiche patient
+function ficheTab(p, field, label, placeholder) {
+  const content = p[field] || '';
+  if (!content) {
+    return `<div class="suivi-empty">
+      <span style="color:var(--warm-mid);font-size:13px;">Aucun contenu — utilisez le bouton ✎ Modifier pour renseigner cet onglet,<br>ou ajoutez des notes depuis une séance.</span>
+    </div>`;
+  }
+  // Afficher les entrées horodatées (format "── [date] ──\n...") ou le texte libre
+  return `<div class="notes-block suivi-content">${escHtml(content)}</div>`;
+}
+
+// Affichage des onglets dans la fiche patient (généré dynamiquement)
+function showFicheTab(tabId, btn) {
+  const container = btn.closest('.suivi-tabs-fiche');
+  container.querySelectorAll('[id^="fiche-tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById(tabId).style.display = '';
+  container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Ouvre le modal de suivi depuis une séance
+function openSuiviSeance(seanceId) {
+  const s = DB.seances.find(s => s.id === seanceId); if (!s) return;
+  const p = DB.patients.find(p => p.id === s.patientId); if (!p) return;
+
+  document.getElementById('suivi-seance-id').value  = seanceId;
+  document.getElementById('suivi-patient-id').value = p.id;
+  document.getElementById('suivi-seance-title').textContent = `Suivi — ${p.prenom} ${p.nom.toUpperCase()} · séance du ${formatDate(s.date)}`;
+
+  // Vider les champs de nouvelle note
+  ['sv-historique-new', 'sv-diagat-new', 'sv-supervision-new'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+
+  // Afficher le contenu existant
+  renderSuiviExisting('sv-historique-existing',  p.historique  || '');
+  renderSuiviExisting('sv-diagat-existing',       p.diagnosticAT || '');
+  renderSuiviExisting('sv-supervision-existing',  p.supervision || '');
+
+  // Reset tabs
+  showTab('sv-tab-historique', document.querySelector('#modal-suivi-seance .tab-btn'));
+  document.getElementById('modal-suivi-seance').classList.remove('hidden');
+}
+
+function renderSuiviExisting(containerId, content) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = content
+    ? `<div class="suivi-section-hint" style="margin-top:.5rem;">Contenu actuel :</div><div class="notes-block suivi-content">${escHtml(content)}</div>`
+    : `<div style="color:var(--warm-mid);font-size:12px;margin-top:.5rem;font-style:italic;">Aucun contenu existant.</div>`;
+}
+
+function saveSuiviSeance() {
+  const seanceId  = document.getElementById('suivi-seance-id').value;
+  const patientId = document.getElementById('suivi-patient-id').value;
+  const s = DB.seances.find(s => s.id === seanceId);
+  const p = DB.patients.find(p => p.id === patientId);
+  if (!p) return;
+
+  const dateStamp = formatDate(s ? s.date : today());
+  let changed = false;
+
+  // Pour chaque section : si une nouvelle note est saisie, la préfixer horodatée
+  const sections = [
+    { newId: 'sv-historique-new',  field: 'historique'   },
+    { newId: 'sv-diagat-new',      field: 'diagnosticAT' },
+    { newId: 'sv-supervision-new', field: 'supervision'  }
+  ];
+
+  sections.forEach(({ newId, field }) => {
+    const newText = document.getElementById(newId).value.trim();
+    if (!newText) return;
+    const stamp   = `── ${dateStamp} ──\n${newText}`;
+    p[field]      = p[field] ? stamp + '\n\n' + p[field] : stamp;
+    changed       = true;
+  });
+
+  if (!changed) { toast('Aucune note à enregistrer.'); return; }
+
+  dbSave();
+  document.getElementById('modal-suivi-seance').classList.add('hidden');
+  toast('Notes de suivi enregistrées ✓', 'success');
+
+  // Rafraîchir la fiche si elle est ouverte
+  const returnTo = document.getElementById('s-return-patient').value;
+  if (returnTo === patientId && document.getElementById('modal-fiche').classList.contains('hidden') === false) {
+    viewPatient(patientId);
+  }
+}
+
+function editPatientFromFiche(id) { closeModal('modal-fiche'); editPatient(id); }
+
 function addSeanceForPatient(patientId) {
-  closeModal('modal-fiche');
-  openModal('modal-seance');
+  closeModal('modal-fiche'); openModal('modal-seance');
   setTimeout(() => {
     document.getElementById('s-patient').value = patientId;
     const p = DB.patients.find(p => p.id === patientId);
     if (p) document.getElementById('s-tarif').value = p.tarif;
-    // remember to reopen fiche after save
     document.getElementById('s-return-patient').value = patientId;
   }, 50);
 }
 
-function viewSeanceFromFiche(seanceId, patientId) {
-  document.getElementById('s-return-patient').value = patientId;
-  viewSeance(seanceId, patientId);
-}
-
-function editSeanceFromFiche(seanceId, patientId) {
-  document.getElementById('s-return-patient').value = patientId;
-  editSeance(seanceId);
-}
+function viewSeanceFromFiche(sid, pid) { document.getElementById('s-return-patient').value = pid; viewSeance(sid, pid); }
+function editSeanceFromFiche(sid, pid) { document.getElementById('s-return-patient').value = pid; editSeance(sid); }
 
 function refreshFicheSeances(patientId) {
-  const p = DB.patients.find(p => p.id === patientId); if (!p) return;
-  const seances = DB.seances.filter(s => s.patientId === patientId).sort((a,b) => b.date.localeCompare(a.date));
-  const el = document.getElementById('fiche-seances-list');
-  if (!el) return;
-  if (seances.length === 0) {
+  const el      = document.getElementById('fiche-seances-list'); if (!el) return;
+  const seances = DB.seances.filter(s => s.patientId === patientId).sort((a, b) => b.date.localeCompare(a.date));
+  if (!seances.length) {
     el.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;padding:.5rem 0;">Aucune séance enregistrée</div>';
     return;
   }
@@ -412,19 +901,21 @@ function renderPatients() {
   const q  = document.getElementById('search-patients').value.toLowerCase();
   const st = document.getElementById('filter-patient-statut').value;
   const el = document.getElementById('patients-list');
+
   const filtered = DB.patients.filter(p => {
-    const matchQ  = (p.prenom + ' ' + p.nom).toLowerCase().includes(q) || (p.motif || '').toLowerCase().includes(q);
-    const matchSt = !st || p.statut === st;
-    return matchQ && matchSt;
+    const matchQ = (p.prenom + ' ' + p.nom).toLowerCase().includes(q) || (p.motif || '').toLowerCase().includes(q);
+    return matchQ && (!st || p.statut === st);
   });
-  if (filtered.length === 0) {
+
+  if (!filtered.length) {
     el.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="ei">◈</div>
-      <p>${DB.patients.length === 0 ? 'Aucun patient enregistré' : 'Aucun résultat pour « ' + q + ' »'}</p>
-      ${DB.patients.length === 0 ? '<button class="btn btn-primary" onclick="openModal(\'modal-patient\')">+ Ajouter un patient</button>' : ''}
+      <p>${DB.patients.length === 0 ? 'Aucun patient enregistré' : `Aucun résultat pour « ${q} »`}</p>
+      ${DB.patients.length === 0 ? `<button class="btn btn-primary" onclick="openModal('modal-patient')">+ Ajouter un patient</button>` : ''}
     </div>`;
     return;
   }
+
   el.innerHTML = filtered.map(p => {
     const ini = (p.prenom[0] + p.nom[0]).toUpperCase();
     const nb  = DB.seances.filter(s => s.patientId === p.id && s.statut === 'honoré').length;
@@ -442,22 +933,23 @@ function renderPatients() {
   }).join('');
 }
 
-// ════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════
 // SÉANCES
-// ════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+
 function resetSeanceForm() {
-  document.getElementById('s-edit-id').value = '';
+  document.getElementById('s-edit-id').value        = '';
   document.getElementById('s-return-patient').value = '';
-  document.getElementById('ms-title').textContent = 'Nouvelle séance';
+  document.getElementById('ms-title').textContent   = 'Nouvelle séance';
   populateSelectPat('s-patient');
-  document.getElementById('s-date').value    = today();
-  document.getElementById('s-heure').value   = '10:00';
-  document.getElementById('s-duree').value   = '60';
-  document.getElementById('s-tarif').value   = CFG.tarif || 60;
-  document.getElementById('s-statut').value  = 'planifié';
-  document.getElementById('s-paiement').value= '';
-  document.getElementById('s-notes').value   = '';
-  // Récurrence
+  document.getElementById('s-date').value     = today();
+  document.getElementById('s-heure').value    = '10:00';
+  document.getElementById('s-duree').value    = '60';
+  document.getElementById('s-tarif').value    = CFG.tarif || 60;
+  document.getElementById('s-statut').value   = 'planifié';
+  document.getElementById('s-paiement').value = '';
+  document.getElementById('s-notes').value    = '';
   document.getElementById('s-recurrence').checked = false;
   toggleRecurrence();
 }
@@ -469,79 +961,68 @@ function toggleRecurrence() {
 }
 
 function switchRecMode(mode, btn) {
-  document.getElementById('rec-tab-intervalle').style.display  = mode === 'intervalle'  ? '' : 'none';
-  document.getElementById('rec-tab-jourhebdo').style.display   = mode === 'jourhebdo'   ? '' : 'none';
+  document.getElementById('rec-tab-intervalle').style.display = mode === 'intervalle' ? '' : 'none';
+  document.getElementById('rec-tab-jourhebdo').style.display  = mode === 'jourhebdo'  ? '' : 'none';
   document.querySelectorAll('#recurrence-box .tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   updateRecurrencePreview();
 }
 
-// Retourne le mode de récurrence actif ('intervalle' ou 'jourhebdo')
 function getRecMode() {
   const el = document.getElementById('rec-tab-jourhebdo');
-  return el && el.style.display !== 'none' ? 'jourhebdo' : 'intervalle';
+  return (el && el.style.display !== 'none') ? 'jourhebdo' : 'intervalle';
 }
 
-// Calcule les dates de récurrence par jour de semaine
 function calcDatesJourHebdo(startDate) {
   const jours    = Array.from(document.querySelectorAll('#rec-jours-semaine input:checked')).map(cb => parseInt(cb.value));
-  if (jours.length === 0) return [];
+  if (!jours.length) return [];
   const freq     = parseInt(document.getElementById('s-rec-semaine-freq').value) || 1;
-  const count    = parseInt(document.getElementById('s-rec-count-hebdo').value) || 4;
+  const count    = parseInt(document.getElementById('s-rec-count-hebdo').value)  || 4;
   const debutStr = document.getElementById('s-rec-debut-hebdo').value || startDate;
   if (!debutStr) return [];
 
-  const results = [];
-  const debut   = new Date(debutStr);
-  // Trouver le lundi de la semaine de départ
-  const startMonday = new Date(debut);
-  startMonday.setDate(debut.getDate() - ((debut.getDay() + 6) % 7));
+  const results    = [];
+  const debut      = new Date(debutStr);
+  const lundiDebut = new Date(debut);
+  lundiDebut.setDate(debut.getDate() - ((debut.getDay() + 6) % 7));
 
-  let weekOffset = 0;
+  let semaine = 0;
   while (results.length < count) {
-    const weekStart = new Date(startMonday);
-    weekStart.setDate(startMonday.getDate() + weekOffset * 7);
+    const ds = new Date(lundiDebut);
+    ds.setDate(lundiDebut.getDate() + semaine * 7);
     jours.forEach(dow => {
       if (results.length >= count) return;
-      // dow: 0=Di,1=Lu…6=Sa → JS getDay: 0=Di,1=Lu…6=Sa
-      const candidate = new Date(weekStart);
-      // weekStart est lundi (getDay()=1), décaler
-      const mondayDow = 1;
-      const delta = (dow - mondayDow + 7) % 7;
-      candidate.setDate(weekStart.getDate() + delta);
-      const candidateStr = candidate.toISOString().split('T')[0];
-      if (candidateStr >= debutStr) results.push(candidateStr);
+      const date = new Date(ds);
+      date.setDate(ds.getDate() + (dow - 1 + 7) % 7);
+      const str = date.toISOString().split('T')[0];
+      if (str >= debutStr) results.push(str);
     });
-    weekOffset += freq;
-    if (weekOffset > 500) break; // sécurité
+    semaine += freq;
+    if (semaine > 500) break;
   }
-  return results.sort((a,b) => a.localeCompare(b)).slice(0, count);
+  return results.sort((a, b) => a.localeCompare(b)).slice(0, count);
 }
 
 function updateRecurrencePreview() {
   const startDate = document.getElementById('s-date').value;
-  const mode = getRecMode();
+  const mode      = getRecMode();
 
   if (mode === 'jourhebdo') {
     const dates = calcDatesJourHebdo(startDate);
-    if (dates.length === 0) { document.getElementById('rec-preview').textContent = ''; return; }
-    document.getElementById('rec-preview').innerHTML =
-      `<strong>${dates.length} séances</strong> planifiées :<br>` + dates.map(formatDateShort).join(' · ');
+    document.getElementById('rec-preview').innerHTML = dates.length
+      ? `<strong>${dates.length} séances</strong> planifiées :<br>${dates.map(formatDateShort).join(' · ')}`
+      : '';
     return;
   }
-
-  // Mode intervalle
   const freq  = parseInt(document.getElementById('s-rec-freq').value)  || 7;
   const count = parseInt(document.getElementById('s-rec-count').value) || 4;
   if (!startDate || count < 1) { document.getElementById('rec-preview').textContent = ''; return; }
-  let dates = [];
+  const dates = [formatDateShort(startDate)];
   for (let i = 1; i < count; i++) dates.push(formatDateShort(addDays(startDate, freq * i)));
-  document.getElementById('rec-preview').innerHTML =
-    `<strong>${count} séances</strong> planifiées :<br>` +
-    [formatDateShort(startDate), ...dates].join(' · ');
+  document.getElementById('rec-preview').innerHTML = `<strong>${count} séances</strong> planifiées :<br>${dates.join(' · ')}`;
 }
 
-document.getElementById('s-patient').addEventListener('change', function() {
+document.getElementById('s-patient').addEventListener('change', function () {
   const p = DB.patients.find(p => p.id === this.value);
   if (p) document.getElementById('s-tarif').value = p.tarif;
 });
@@ -552,10 +1033,10 @@ function saveSeance() {
   const heure     = document.getElementById('s-heure').value;
   if (!patientId || !date || !heure) { alert('Patient, date et heure sont requis.'); return; }
 
-  const id      = document.getElementById('s-edit-id').value;
+  const id       = document.getElementById('s-edit-id').value;
   const returnTo = document.getElementById('s-return-patient').value;
-  const duree   = parseInt(document.getElementById('s-duree').value);
-  const base    = {
+  const duree    = parseInt(document.getElementById('s-duree').value);
+  const base     = {
     patientId, date, heure, duree,
     tarif:    parseFloat(document.getElementById('s-tarif').value) || 60,
     statut:   document.getElementById('s-statut').value,
@@ -563,93 +1044,66 @@ function saveSeance() {
     notes:    document.getElementById('s-notes').value.trim()
   };
 
-  // ── Vérification indisponibilité du jour ──
-  const indispoJour = (DB.indisponibilites || []).find(i => i.date === date && !i.heureDebut)
-    || (!document.getElementById('indispo-journee') && getIndispoRegleForDate(date));
-  const regleJour = getIndispoRegleForDate(date);
+  // Vérification : jour indisponible
+  const indispoJour = (DB.indisponibilites || []).find(i => i.date === date && !i.heureDebut);
+  const regleJour   = getIndispoRegleForDate(date);
   if (indispoJour || (regleJour && !regleJour.heureDebut)) {
     const motif = (indispoJour || regleJour)?.motif;
-    if (!confirm(`⚠ Le ${formatDate(date)} est marqué indisponible${motif ? ' (' + motif + ')' : ''}.\nContinuer quand même ?`)) return;
+    if (!confirm(`⚠ Le ${formatDate(date)} est marqué indisponible${motif ? ` (${motif})` : ''}.\nContinuer quand même ?`)) return;
   }
 
-  // ── Vérification chevauchement créneaux ──
-  function toMin(h) { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; }
-  const startMin = toMin(heure);
-  const endMin   = startMin + duree;
-
-  // Vérifier créneaux indisponibles (avec heure)
+  // Vérification : créneau indisponible
+  const startMin    = toMin(heure), endMin = startMin + duree;
   const indispoSlot = (DB.indisponibilites || []).find(i => {
     if (i.date !== date || !i.heureDebut) return false;
-    const is = toMin(i.heureDebut), ie = toMin(i.heureFin || i.heureDebut) + (i.duree || 60);
-    return startMin < ie && endMin > is;
+    const ie = toMin(i.heureFin || i.heureDebut) + (i.duree || 60);
+    return startMin < ie && endMin > toMin(i.heureDebut);
   });
   if (indispoSlot) {
     if (!confirm(`⚠ Ce créneau chevauche une indisponibilité (${indispoSlot.heureDebut}${indispoSlot.motif ? ' — ' + indispoSlot.motif : ''}).\nContinuer quand même ?`)) return;
   }
 
-  // Vérifier chevauchement avec d'autres séances
+  // Vérification : chevauchement avec d'autres séances
   const recur = !id && document.getElementById('s-recurrence').checked;
+  const mode  = getRecMode();
   let datesToCheck = [date];
   if (recur) {
-    const mode = getRecMode();
-    if (mode === 'jourhebdo') {
-      datesToCheck = calcDatesJourHebdo(date);
-    } else {
-      const freq  = parseInt(document.getElementById('s-rec-freq').value) || 7;
-      const count = parseInt(document.getElementById('s-rec-count').value) || 1;
-      datesToCheck = [];
-      for (let i = 0; i < count; i++) datesToCheck.push(addDays(date, freq * i));
-    }
+    datesToCheck = mode === 'jourhebdo'
+      ? calcDatesJourHebdo(date)
+      : Array.from({ length: parseInt(document.getElementById('s-rec-count').value) || 1 },
+          (_, i) => addDays(date, (parseInt(document.getElementById('s-rec-freq').value) || 7) * i));
   }
-
   const conflicts = [];
   datesToCheck.forEach(d => {
-    DB.seances
-      .filter(s => s.date === d && s.id !== id && s.statut !== 'annulé')
-      .forEach(s => {
-        const ss = toMin(s.heure), se = ss + s.duree;
-        if (startMin < se && endMin > ss) conflicts.push(s);
-      });
+    DB.seances.filter(s => s.date === d && s.id !== id && s.statut !== 'annulé').forEach(s => {
+      if (startMin < toMin(s.heure) + s.duree && endMin > toMin(s.heure)) conflicts.push(s);
+    });
   });
-  if (conflicts.length > 0) {
+  if (conflicts.length) {
     const detail = conflicts.map(s => `• ${formatDate(s.date)} à ${s.heure} (${getPatientName(s.patientId, false)}, ${s.duree} min)`).join('\n');
-    if (!confirm(`⚠ Chevauchement détecté avec ${conflicts.length} séance(s) :\n${detail}\n\nContinuer quand même ?`)) return;
+    if (!confirm(`⚠ Chevauchement avec ${conflicts.length} séance(s) :\n${detail}\n\nContinuer quand même ?`)) return;
   }
 
+  // Enregistrement
   if (id) {
-    // Edition
     const idx = DB.seances.findIndex(s => s.id === id);
     if (idx > -1) { base.id = id; base.facture = DB.seances[idx].facture; DB.seances[idx] = base; }
-  } else {
-    // Nouvelle(s) séance(s)
-    if (recur) {
-      const mode = getRecMode();
-      if (mode === 'jourhebdo') {
-        const dates = calcDatesJourHebdo(date);
-        if (dates.length === 0) { alert('Sélectionnez au moins un jour de semaine.'); return; }
-        dates.forEach(d => DB.seances.push({ ...base, id: uid(), facture: null, date: d }));
-      } else {
-        const freq2  = parseInt(document.getElementById('s-rec-freq').value)  || 7;
-        const count2 = parseInt(document.getElementById('s-rec-count').value) || 1;
-        for (let i = 0; i < count2; i++) {
-          DB.seances.push({ ...base, id: uid(), facture: null, date: addDays(date, freq2 * i) });
-        }
-      }
+  } else if (recur) {
+    if (mode === 'jourhebdo') {
+      const dates = calcDatesJourHebdo(date);
+      if (!dates.length) { alert('Sélectionnez au moins un jour de semaine.'); return; }
+      dates.forEach(d => DB.seances.push({ ...base, id: uid(), facture: null, date: d }));
     } else {
-      base.id = uid(); base.facture = null;
-      DB.seances.push(base);
+      const freq2  = parseInt(document.getElementById('s-rec-freq').value)  || 7;
+      const count2 = parseInt(document.getElementById('s-rec-count').value) || 1;
+      for (let i = 0; i < count2; i++) DB.seances.push({ ...base, id: uid(), facture: null, date: addDays(date, freq2 * i) });
     }
-  }
-
-  dbSave();
-  closeModal('modal-seance');
-
-  if (returnTo) {
-    viewPatient(returnTo);
   } else {
-    renderSeances();
-    renderDashboard();
+    base.id = uid(); base.facture = null; DB.seances.push(base);
   }
+
+  dbSave(); closeModal('modal-seance');
+  if (returnTo) viewPatient(returnTo); else { renderSeances(); renderDashboard(); }
   toast('Séance(s) enregistrée(s) ✓', 'success');
 }
 
@@ -657,16 +1111,16 @@ function editSeance(id) {
   const s = DB.seances.find(s => s.id === id); if (!s) return;
   openModal('modal-seance');
   setTimeout(() => {
-    document.getElementById('s-edit-id').value    = id;
-    document.getElementById('ms-title').textContent = 'Modifier la séance';
-    document.getElementById('s-patient').value    = s.patientId;
-    document.getElementById('s-date').value       = s.date;
-    document.getElementById('s-heure').value      = s.heure;
-    document.getElementById('s-duree').value      = s.duree;
-    document.getElementById('s-tarif').value      = s.tarif;
-    document.getElementById('s-statut').value     = s.statut;
-    document.getElementById('s-paiement').value   = s.paiement || '';
-    document.getElementById('s-notes').value      = s.notes || '';
+    document.getElementById('s-edit-id').value       = id;
+    document.getElementById('ms-title').textContent  = 'Modifier la séance';
+    document.getElementById('s-patient').value       = s.patientId;
+    document.getElementById('s-date').value          = s.date;
+    document.getElementById('s-heure').value         = s.heure;
+    document.getElementById('s-duree').value         = s.duree;
+    document.getElementById('s-tarif').value         = s.tarif;
+    document.getElementById('s-statut').value        = s.statut;
+    document.getElementById('s-paiement').value      = s.paiement || '';
+    document.getElementById('s-notes').value         = s.notes    || '';
     document.getElementById('s-recurrence').checked = false;
     toggleRecurrence();
   }, 50);
@@ -676,64 +1130,44 @@ function deleteSeance(id) {
   if (!confirm('Supprimer cette séance ?')) return;
   const returnTo = document.getElementById('s-return-patient').value;
   DB.seances = DB.seances.filter(s => s.id !== id);
-  dbSave();
-  closeModal('modal-seance-view');
-  if (returnTo) {
-    refreshFicheSeances(returnTo);
-  } else {
-    renderSeances();
-    renderDashboard();
-  }
+  dbSave(); closeModal('modal-seance-view');
+  if (returnTo) refreshFicheSeances(returnTo); else { renderSeances(); renderDashboard(); }
   toast('Séance supprimée');
 }
 
 function marquerStatut(id, statut) {
   const s = DB.seances.find(s => s.id === id); if (!s) return;
-  if (statut === 'réglée') {
-    openModalReglement(id);
-    return;
-  }
-  s.statut = statut;
-  dbSave();
+  if (statut === 'réglée') { openModalReglement(id); return; }
+  s.statut = statut; dbSave();
   const returnTo = document.getElementById('s-return-patient').value;
   closeModal('modal-seance-view');
-  if (returnTo) {
-    refreshFicheSeances(returnTo);
-    viewSeanceFromFiche(id, returnTo);
-  } else {
-    renderSeances(); renderDashboard();
-  }
+  if (returnTo) { refreshFicheSeances(returnTo); viewSeanceFromFiche(id, returnTo); }
+  else { renderSeances(); renderDashboard(); }
   toast('Statut mis à jour ✓', 'success');
 }
 
 function openModalReglement(seanceId) {
   const s = DB.seances.find(s => s.id === seanceId); if (!s) return;
   document.getElementById('reg-seance-id').value = seanceId;
-  // date de règlement par défaut = date de la séance
-  document.getElementById('reg-date').value = s.dateReglement || s.date;
-  document.getElementById('reg-paiement').value = s.paiement || '';
+  document.getElementById('reg-date').value      = s.dateReglement || s.date;
+  document.getElementById('reg-paiement').value  = s.paiement || '';
   document.getElementById('modal-reglement').classList.remove('hidden');
 }
 
 function confirmerReglement() {
   const seanceId = document.getElementById('reg-seance-id').value;
-  const s = DB.seances.find(s => s.id === seanceId); if (!s) return;
-  const dateReg = document.getElementById('reg-date').value;
-  const paiement = document.getElementById('reg-paiement').value;
+  const s        = DB.seances.find(s => s.id === seanceId); if (!s) return;
+  const dateReg  = document.getElementById('reg-date').value;
   if (!dateReg) { alert('Veuillez indiquer la date de règlement.'); return; }
-  s.statut = 'réglée';
+  s.statut        = 'réglée';
   s.dateReglement = dateReg;
-  s.paiement = paiement;
+  s.paiement      = document.getElementById('reg-paiement').value;
   dbSave();
   document.getElementById('modal-reglement').classList.add('hidden');
   const returnTo = document.getElementById('s-return-patient').value;
   closeModal('modal-seance-view');
-  if (returnTo) {
-    refreshFicheSeances(returnTo);
-    viewSeanceFromFiche(seanceId, returnTo);
-  } else {
-    renderSeances(); renderDashboard();
-  }
+  if (returnTo) { refreshFicheSeances(returnTo); viewSeanceFromFiche(seanceId, returnTo); }
+  else { renderSeances(); renderDashboard(); }
   toast('Séance marquée réglée ✓', 'success');
 }
 
@@ -741,22 +1175,18 @@ function viewSeance(id, returnPatientId = '') {
   const s = DB.seances.find(s => s.id === id); if (!s) return;
   if (returnPatientId) document.getElementById('s-return-patient').value = returnPatientId;
   const pn = getPatientName(s.patientId);
-  const isTodayOrPast = s.date <= today();
-  const retId = document.getElementById('s-return-patient').value;
 
-  const actionBtns = `
+  const btns = `
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.25rem;border-top:1px solid var(--beige-mid);padding-top:1.25rem;">
       <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-seance-view');editSeance('${id}')">✎ Modifier</button>
+      <button class="btn btn-secondary btn-sm" onclick="openSuiviSeance('${id}')">📋 Suivi</button>
       ${s.statut === 'planifié' ? `
         <button class="btn btn-success btn-sm" onclick="marquerStatut('${id}','honoré')">✓ Honorée</button>
         <button class="btn btn-info btn-sm" onclick="openModalReglement('${id}')">💶 Honorée et Réglée</button>
         <button class="btn btn-danger btn-sm" onclick="marquerStatut('${id}','annulé')">✕ Annuler</button>` : ''}
-      ${s.statut === 'honoré' ? `
-        <button class="btn btn-info btn-sm" onclick="marquerStatut('${id}','réglée')">💶 Marquer réglée</button>` : ''}
-      ${s.statut === 'réglée' && !s.facture ? `
-        <button class="btn btn-primary btn-sm" onclick="closeModal('modal-seance-view');genFactureFromSeance('${id}')">📄 Générer facture</button>` : ''}
-      ${s.statut === 'réglée' && s.facture ? `
-        <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-seance-view');viewFacture('${s.facture}')">📄 Voir la facture</button>` : ''}
+      ${s.statut === 'honoré' ? `<button class="btn btn-info btn-sm" onclick="marquerStatut('${id}','réglée')">💶 Marquer réglée</button>` : ''}
+      ${s.statut === 'réglée' && !s.facture ? `<button class="btn btn-primary btn-sm" onclick="closeModal('modal-seance-view');genFactureFromSeance('${id}')">📄 Générer facture</button>` : ''}
+      ${s.statut === 'réglée' &&  s.facture ? `<button class="btn btn-secondary btn-sm" onclick="closeModal('modal-seance-view');viewFacture('${s.facture}')">📄 Voir la facture</button>` : ''}
       <button class="btn btn-danger btn-xs" style="margin-left:auto;" onclick="deleteSeance('${id}')">Supprimer</button>
     </div>`;
 
@@ -768,12 +1198,12 @@ function viewSeance(id, returnPatientId = '') {
       <div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Durée</span><span>${s.duree} min</span></div>
       <div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Tarif</span><span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span></div>
       <div style="display:flex;gap:.75rem;align-items:center;"><span style="color:var(--warm-mid);min-width:110px;">Statut</span><span class="badge badge-${s.statut}">${s.statut}</span></div>
-      ${s.paiement ? `<div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Paiement</span><span>${s.paiement}</span></div>` : ''}
+      ${s.paiement      ? `<div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Paiement</span><span>${s.paiement}</span></div>` : ''}
       ${s.dateReglement ? `<div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Réglé le</span><span>${formatDate(s.dateReglement)}</span></div>` : ''}
-      ${s.facture  ? `<div style="display:flex;gap:.75rem;align-items:center;"><span style="color:var(--warm-mid);min-width:110px;">Facture</span><span class="badge badge-réglée">Facturée</span></div>` : ''}
+      ${s.facture       ? `<div style="display:flex;gap:.75rem;align-items:center;"><span style="color:var(--warm-mid);min-width:110px;">Facture</span><span class="badge badge-réglée">Facturée</span></div>` : ''}
     </div>
     ${s.notes ? `<div style="margin-top:1rem;"><div class="section-title">Notes</div><div class="notes-block">${s.notes}</div></div>` : ''}
-    ${actionBtns}`;
+    ${btns}`;
 
   document.getElementById('modal-seance-view').classList.remove('hidden');
 }
@@ -784,7 +1214,6 @@ function genFactureFromSeance(seanceId) {
   setTimeout(() => {
     document.getElementById('f-patient').value = s.patientId;
     populateFactureSeances();
-    // Auto-check this seance
     setTimeout(() => {
       const cb = document.querySelector(`.f-cb[value="${seanceId}"]`);
       if (cb) { cb.checked = true; updateFTotal(); }
@@ -793,14 +1222,12 @@ function genFactureFromSeance(seanceId) {
 }
 
 function populateFilterPat() {
-  const sel = document.getElementById('filter-pat');
-  sel.innerHTML = '<option value="">Tous les patients</option>' +
+  document.getElementById('filter-pat').innerHTML = '<option value="">Tous les patients</option>' +
     DB.patients.map(p => `<option value="${p.id}">${p.prenom} ${p.nom.toUpperCase()}</option>`).join('');
 }
 
 function populateSelectPat(selId) {
-  const sel = document.getElementById(selId);
-  sel.innerHTML = '<option value="">— Sélectionner —</option>' +
+  document.getElementById(selId).innerHTML = '<option value="">— Sélectionner —</option>' +
     DB.patients.map(p => `<option value="${p.id}">${p.prenom} ${p.nom.toUpperCase()}</option>`).join('');
 }
 
@@ -808,55 +1235,40 @@ function renderSeances() {
   const st   = document.getElementById('filter-statut').value;
   const pid  = document.getElementById('filter-pat').value;
   const fdat = document.getElementById('filter-date').value;
-  let list   = [...DB.seances].sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+
+  let list = [...DB.seances].sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
   if (st)   list = list.filter(s => s.statut === st);
   if (pid)  list = list.filter(s => s.patientId === pid);
   if (fdat) list = list.filter(s => s.date === fdat);
 
-  // Insérer les blocs indisponibilités si pas de filtre spécial
-  const indisposDuFiltre = fdat
-    ? (DB.indisponibilites || []).filter(i => i.date === fdat)
-    : [];
+  const el               = document.getElementById('seances-list');
+  const indisposDuFiltre = fdat ? (DB.indisponibilites || []).filter(i => i.date === fdat) : [];
 
-  const el = document.getElementById('seances-list');
-  if (list.length === 0 && indisposDuFiltre.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="ei">◷</div><p>Aucune séance${fdat ? ' ce jour' : ''}</p><button class="btn btn-primary" onclick="openModal('modal-seance')">+ Ajouter</button></div>`;
+  if (!list.length && !indisposDuFiltre.length) {
+    el.innerHTML = `<div class="empty-state"><div class="ei">◷</div><p>Aucune séance${fdat ? ' ce jour' : ''}</p>
+      <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Ajouter</button></div>`;
     return;
   }
 
-  // Construire liste avec séparateurs de jour et blocs indisponibles
+  const mkBlock = (i, prefix = '') => {
+    const txt = `${prefix ? prefix + ' — ' : ''}Indisponible${i.heureDebut ? ' ' + i.heureDebut + (i.heureFin ? '–' + i.heureFin : '') : ' — journée entière'}${i.motif ? ' · ' + i.motif : ''}`;
+    return `<div class="indispo-block"><span>⛔ ${txt}</span><button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button></div>`;
+  };
+
   let html = '';
-  if (fdat && indisposDuFiltre.length > 0) {
-    indisposDuFiltre.forEach(i => {
-      html += `<div class="indispo-block">
-        <span>⛔ Indisponible${i.heureDebut ? ' ' + i.heureDebut + (i.heureFin ? '–' + i.heureFin : '') : ' — journée entière'}${i.motif ? ' · ' + i.motif : ''}</span>
-        <button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button>
-      </div>`;
-    });
-  }
+  indisposDuFiltre.forEach(i => { html += mkBlock(i); });
 
   let lastDate = null;
   list.forEach(s => {
-    if (s.date !== lastDate) {
-      // Séparateur de date + indispos du jour si pas de filtre date
-      if (!fdat) {
-        const indisposJour = (DB.indisponibilites || []).filter(i => i.date === s.date);
-        indisposJour.forEach(i => {
-          html += `<div class="indispo-block">
-            <span>⛔ ${formatDate(s.date)} — Indisponible${i.heureDebut ? ' ' + i.heureDebut + (i.heureFin ? '–' + i.heureFin : '') : ' journée entière'}${i.motif ? ' · ' + i.motif : ''}</span>
-            <button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button>
-          </div>`;
-        });
-      }
+    if (!fdat && s.date !== lastDate) {
+      (DB.indisponibilites || []).filter(i => i.date === s.date).forEach(i => { html += mkBlock(i, formatDate(s.date)); });
       lastDate = s.date;
     }
-    const pn = getPatientName(s.patientId);
-    const d  = s.date.split('-');
-    const mo = MOIS_SHORT[parseInt(d[1])-1];
+    const [, m, j] = s.date.split('-');
     html += `<div class="rdv-item" onclick="viewSeance('${s.id}')">
-      <div class="rdv-date"><div class="day">${d[2]}</div><div class="month">${mo}</div></div>
+      <div class="rdv-date"><div class="day">${parseInt(j)}</div><div class="month">${MOIS_SHORT[parseInt(m) - 1]}</div></div>
       <div style="flex:1;">
-        <div style="font-size:14px;font-weight:500;">${pn}</div>
+        <div style="font-size:14px;font-weight:500;">${getPatientName(s.patientId)}</div>
         <div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${s.heure} · ${s.duree} min${s.paiement ? ' · ' + s.paiement : ''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
@@ -866,48 +1278,37 @@ function renderSeances() {
     </div>`;
   });
 
-  // Indispos sans séance ce jour (si pas de filtre date)
   if (!fdat) {
-    const datesAvecSeances = new Set(list.map(s => s.date));
-    (DB.indisponibilites || [])
-      .filter(i => !datesAvecSeances.has(i.date))
-      .sort((a,b) => a.date.localeCompare(b.date))
-      .forEach(i => {
-        html += `<div class="indispo-block">
-          <span>⛔ ${formatDate(i.date)} — Indisponible${i.heureDebut ? ' ' + i.heureDebut + (i.heureFin ? '–' + i.heureFin : '') : ' journée entière'}${i.motif ? ' · ' + i.motif : ''}</span>
-          <button class="btn btn-danger btn-xs" onclick="deleteIndispo('${i.id}')">Supprimer</button>
-        </div>`;
-      });
+    const datesAvec = new Set(list.map(s => s.date));
+    (DB.indisponibilites || []).filter(i => !datesAvec.has(i.date)).sort((a, b) => a.date.localeCompare(b.date))
+      .forEach(i => { html += mkBlock(i, formatDate(i.date)); });
   }
 
   el.innerHTML = html;
 
-  // Résumé des règles récurrentes
-  const regles = DB.indisponibilites_regles || [];
+  // Règles récurrentes
   const summaryEl = document.getElementById('indispo-regles-summary');
-  if (summaryEl) {
-    if (regles.length > 0) {
-      const jNoms = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
-      const freqLabel = f => f <= 1 ? 'toutes les semaines' : `1 semaine sur ${f}`;
-      summaryEl.innerHTML = `<div style="margin-top:1.5rem;"><div class="section-title" style="margin-bottom:.5rem;">Règles d'indisponibilité récurrentes</div>` +
-        regles.map(r => {
-          const jours   = r.jours.map(j => jNoms[j]).join(', ');
-          const horaire = r.heureDebut ? ` · ${r.heureDebut}${r.heureFin ? '–'+r.heureFin : ''}` : ' · journée entière';
-          const periode = `${formatDate(r.debut)}${r.fin ? ' → ' + formatDate(r.fin) : ' → indéfiniment'}`;
-          return `<div class="indispo-block">
-            <span>🔁 <strong>${jours}</strong>, ${freqLabel(r.freq)}${horaire}${r.motif ? ' · <em>' + r.motif + '</em>' : ''}<br>
-            <small style="color:var(--warm-mid);">${periode}</small></span>
-            <button class="btn btn-danger btn-xs" onclick="deleteIndispoRegle('${r.id}')">Supprimer</button>
-          </div>`;
-        }).join('') + '</div>';
-    } else {
-      summaryEl.innerHTML = '';
-    }
-  }
+  if (!summaryEl) return;
+  const regles = DB.indisponibilites_regles || [];
+  if (!regles.length) { summaryEl.innerHTML = ''; return; }
+  const JOURS   = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
+  const freqLbl = f => f <= 1 ? 'toutes les semaines' : `1 semaine sur ${f}`;
+  summaryEl.innerHTML = `<div style="margin-top:1.5rem;">
+    <div class="section-title" style="margin-bottom:.5rem;">Règles d'indisponibilité récurrentes</div>
+    ${regles.map(r => `<div class="indispo-block">
+      <span>🔁 <strong>${r.jours.map(j => JOURS[j]).join(', ')}</strong>, ${freqLbl(r.freq)}${r.heureDebut ? ` · ${r.heureDebut}${r.heureFin ? '–' + r.heureFin : ''}` : ' · journée entière'}${r.motif ? ' · <em>' + r.motif + '</em>' : ''}<br>
+      <small style="color:var(--warm-mid);">${formatDate(r.debut)}${r.fin ? ' → ' + formatDate(r.fin) : ' → indéfiniment'}</small></span>
+      <button class="btn btn-danger btn-xs" onclick="deleteIndispoRegle('${r.id}')">Supprimer</button>
+    </div>`).join('')}
+  </div>`;
 }
 
+
+// ════════════════════════════════════════════════════════
+// INDISPONIBILITÉS
+// ════════════════════════════════════════════════════════
+
 function openModalIndispo() {
-  // reset
   document.getElementById('indispo-date').value        = document.getElementById('filter-date').value || today();
   document.getElementById('indispo-rec-debut').value   = today();
   document.getElementById('indispo-rec-fin').value     = '';
@@ -917,15 +1318,14 @@ function openModalIndispo() {
   document.getElementById('indispo-journee').checked   = true;
   document.getElementById('indispo-rec-freq').value    = '1';
   document.querySelectorAll('#indispo-jours-semaine input').forEach(cb => cb.checked = false);
-  // reset tabs
   switchIndispoType('ponctuelle', document.querySelector('#modal-indispo .tab-btn'));
   toggleIndispoJournee();
   document.getElementById('modal-indispo').classList.remove('hidden');
 }
 
 function switchIndispoType(type, btn) {
-  document.getElementById('indispo-tab-ponctuelle').style.display  = type === 'ponctuelle'  ? '' : 'none';
-  document.getElementById('indispo-tab-recurrente').style.display  = type === 'recurrente'  ? '' : 'none';
+  document.getElementById('indispo-tab-ponctuelle').style.display = type === 'ponctuelle' ? '' : 'none';
+  document.getElementById('indispo-tab-recurrente').style.display = type === 'recurrente' ? '' : 'none';
   document.querySelectorAll('#modal-indispo .tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
@@ -936,31 +1336,26 @@ function toggleIndispoJournee() {
 }
 
 function saveIndispo() {
-  const full      = document.getElementById('indispo-journee').checked;
+  const full       = document.getElementById('indispo-journee').checked;
   const heureDebut = full ? null : document.getElementById('indispo-heure-debut').value;
   const heureFin   = full ? null : document.getElementById('indispo-heure-fin').value;
   const motif      = document.getElementById('indispo-motif').value.trim();
   const isRec      = document.querySelector('#indispo-tab-recurrente').style.display !== 'none';
 
-  if (!DB.indisponibilites)        DB.indisponibilites        = [];
-  if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
-
   if (isRec) {
-    // Règle récurrente
     const jours = Array.from(document.querySelectorAll('#indispo-jours-semaine input:checked')).map(cb => parseInt(cb.value));
-    if (jours.length === 0) { alert('Sélectionnez au moins un jour.'); return; }
+    if (!jours.length) { alert('Sélectionnez au moins un jour.'); return; }
     const debut = document.getElementById('indispo-rec-debut').value;
     if (!debut) { alert('Date de début requise.'); return; }
     DB.indisponibilites_regles.push({
-      id: uid(), jours, freq: parseInt(document.getElementById('indispo-rec-freq').value) || 1,
+      id: uid(), jours,
+      freq:  parseInt(document.getElementById('indispo-rec-freq').value) || 1,
       debut, fin: document.getElementById('indispo-rec-fin').value || null,
       heureDebut, heureFin, motif
     });
-    const nbJours = ['Di','Lu','Ma','Me','Je','Ve','Sa'];
-    const label = jours.map(j => nbJours[j]).join(', ');
-    toast(`Règle récurrente enregistrée (${label}) ✓`, 'success');
+    const JOURS = ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'];
+    toast(`Règle récurrente enregistrée (${jours.map(j => JOURS[j]).join(', ')}) ✓`, 'success');
   } else {
-    // Ponctuelle
     const date = document.getElementById('indispo-date').value;
     if (!date) { alert('Date requise.'); return; }
     DB.indisponibilites.push({ id: uid(), date, heureDebut, heureFin, motif });
@@ -969,64 +1364,56 @@ function saveIndispo() {
 
   dbSave();
   document.getElementById('modal-indispo').classList.add('hidden');
-  renderSeances();
-  renderCalendar();
+  renderSeances(); renderCalendar();
 }
 
 function deleteIndispo(id) {
   if (!confirm('Supprimer cette indisponibilité ?')) return;
-  DB.indisponibilites = (DB.indisponibilites || []).filter(i => i.id !== id);
+  DB.indisponibilites = DB.indisponibilites.filter(i => i.id !== id);
   dbSave(); renderSeances(); renderCalendar();
   toast('Indisponibilité supprimée');
 }
 
 function deleteIndispoRegle(id) {
-  if (!confirm('Supprimer cette règle récurrente ? Toutes les occurrences futures seront retirées.')) return;
-  DB.indisponibilites_regles = (DB.indisponibilites_regles || []).filter(r => r.id !== id);
+  if (!confirm('Supprimer cette règle récurrente ?')) return;
+  DB.indisponibilites_regles = DB.indisponibilites_regles.filter(r => r.id !== id);
   dbSave(); renderSeances(); renderCalendar();
   toast('Règle supprimée');
 }
 
-// Vérifie si une date (string YYYY-MM-DD) est couverte par les règles récurrentes
-// Retourne la règle ou null
+// Retourne la règle récurrente couvrant une date, ou null
 function getIndispoRegleForDate(dateStr) {
-  const rules = DB.indisponibilites_regles || [];
-  if (!rules.length) return null;
-  const d = new Date(dateStr);
-  const dowJS = d.getDay(); // 0=Di, 1=Lu…
-  // Référence : lundi de la semaine de début pour calculer parité de semaine
-  for (const r of rules) {
-    if (!r.jours.includes(dowJS)) continue;
-    if (dateStr < r.debut) continue;
+  const d      = new Date(dateStr);
+  const dow    = d.getDay();
+  const lundi  = new Date(d);
+  lundi.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+
+  for (const r of (DB.indisponibilites_regles || [])) {
+    if (!r.jours.includes(dow))   continue;
+    if (dateStr < r.debut)        continue;
     if (r.fin && dateStr > r.fin) continue;
     if (r.freq <= 1) return r;
-    // Calculer numéro de semaine depuis le début de la règle
-    const startD = new Date(r.debut);
-    const diffMs = d - startD;
-    const diffWeeks = Math.floor(diffMs / (7 * 86400000));
-    if (diffWeeks % r.freq === 0) return r;
-    // Aussi vérifier les semaines contenant la date de début même si le jour précède
-    // On compte la semaine ISO depuis le lundi de la semaine du debut
-    const startMonday = new Date(startD);
-    startMonday.setDate(startD.getDate() - ((startD.getDay() + 6) % 7));
-    const curMonday  = new Date(d);
-    curMonday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    const weeksDiff = Math.round((curMonday - startMonday) / (7 * 86400000));
-    if (weeksDiff % r.freq === 0) return r;
+    const lundiDebut = new Date(r.debut);
+    lundiDebut.setDate(lundiDebut.getDate() - ((lundiDebut.getDay() + 6) % 7));
+    const diffSemaines = Math.round((lundi - lundiDebut) / (7 * 86400000));
+    if (diffSemaines % r.freq === 0) return r;
   }
   return null;
 }
-// ════════════════════════════════════════
+
+
+// ════════════════════════════════════════════════════════
+// FACTURES
+// ════════════════════════════════════════════════════════
+
 function initFactureModal() {
   populateSelectPat('f-patient');
-  const t = new Date();
+  const ech = new Date(); ech.setDate(ech.getDate() + (CFG.delai || 30));
   document.getElementById('f-date').value     = today();
-  const ech = new Date(t); ech.setDate(ech.getDate() + (CFG.delai || 30));
   document.getElementById('f-echeance').value = ech.toISOString().split('T')[0];
   document.getElementById('f-objet').value    = 'Séances de psychothérapie';
   document.getElementById('f-total-preview').textContent = '0,00 €';
-  document.getElementById('f-seances-select').innerHTML =
-    '<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d\'abord</div>';
+  document.getElementById('f-seances-select').innerHTML  = `<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d'abord</div>`;
   document.getElementById('cfg-warn').style.display = (!CFG.siret || !CFG.adresse) ? 'block' : 'none';
 }
 
@@ -1034,31 +1421,26 @@ function populateFactureSeances() {
   const pId = document.getElementById('f-patient').value;
   const c   = document.getElementById('f-seances-select');
   if (!pId) {
-    c.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d\'abord</div>';
+    c.innerHTML = `<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d'abord</div>`;
     document.getElementById('f-total-preview').textContent = '0,00 €';
     return;
   }
-  // Include séances réglées OR honorées non encore facturées
-  const seances = DB.seances.filter(s =>
-    s.patientId === pId &&
-    (s.statut === 'réglée' || s.statut === 'honoré') &&
-    !s.facture
-  ).sort((a,b) => a.date.localeCompare(b.date));
+  const seances = DB.seances
+    .filter(s => s.patientId === pId && (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
-  if (seances.length === 0) {
-    c.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Aucune séance honorée/réglée non facturée</div>';
+  if (!seances.length) {
+    c.innerHTML = `<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Aucune séance honorée/réglée non facturée</div>`;
     document.getElementById('f-total-preview').textContent = '0,00 €';
     return;
   }
   c.innerHTML = seances.map(s => `
     <label style="display:flex;align-items:center;gap:.75rem;padding:.5rem;cursor:pointer;border-radius:6px;"
       onmouseover="this.style.background='var(--beige)'" onmouseout="this.style.background=''">
-      <input type="checkbox" class="f-cb" value="${s.id}" data-tarif="${s.tarif}"
-        data-paiement="${s.paiement || ''}"
-        onchange="updateFTotal()" style="width:auto;accent-color:var(--sage);">
+      <input type="checkbox" class="f-cb" value="${s.id}" data-tarif="${s.tarif}" onchange="updateFTotal()" style="width:auto;accent-color:var(--sage);">
       <span style="flex:1;font-size:13px;">
         ${formatDate(s.date)} à ${s.heure} — ${s.duree} min
-        ${s.paiement ? '<span style="color:var(--warm-mid);"> · '+s.paiement+'</span>' : ''}
+        ${s.paiement ? `<span style="color:var(--warm-mid);"> · ${s.paiement}</span>` : ''}
         <span class="badge badge-${s.statut}" style="font-size:10px;margin-left:4px;">${s.statut}</span>
       </span>
       <span style="font-family:var(--font-serif);font-size:15px;">${s.tarif} €</span>
@@ -1067,100 +1449,88 @@ function populateFactureSeances() {
 }
 
 function updateFTotal() {
-  const cbs   = document.querySelectorAll('.f-cb:checked');
-  const total = Array.from(cbs).reduce((a, cb) => a + parseFloat(cb.dataset.tarif), 0);
+  const total = Array.from(document.querySelectorAll('.f-cb:checked')).reduce((a, cb) => a + parseFloat(cb.dataset.tarif), 0);
   document.getElementById('f-total-preview').textContent = fmtMoney(total);
 }
 
 function genererFacture() {
   const pId = document.getElementById('f-patient').value;
   const cbs = document.querySelectorAll('.f-cb:checked');
-  if (!pId || cbs.length === 0) { alert('Sélectionnez un patient et au moins une séance.'); return; }
-  if (!CFG.siret) { alert('SIRET requis. Complétez vos paramètres.'); return; }
+  if (!pId || !cbs.length) { alert('Sélectionnez un patient et au moins une séance.'); return; }
+  if (!CFG.siret)           { alert('SIRET requis. Complétez vos paramètres.'); return; }
 
-  const yr    = new Date().getFullYear();
-  const ids    = Array.from(cbs).map(cb => cb.value);
-  const seancesSelected = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
-
-  // Numérotation : ANNEE-MM-JJ-XX
-  const firstSeanceDate = [...seancesSelected].sort((a,b) => a.date.localeCompare(b.date))[0]?.date || today();
-  const [fsYear, fsMois, fsJour] = firstSeanceDate.split('-');
-  const num   = fsYear + '-' + fsMois + '-' + fsJour + '-' + String(DB.nextNum).padStart(2, '0');
-  DB.nextNum++;
-
-  const seances = seancesSelected;
+  const ids     = Array.from(cbs).map(cb => cb.value);
+  const seances = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
   const total   = seances.reduce((a, s) => a + s.tarif, 0);
 
-  // Collect paiement modes from séances
-  const paiements = [...new Set(seances.map(s => s.paiement).filter(Boolean))];
+  // Numérotation ANNEE-MM-JJ-XX (date de la première séance)
+  const firstDate    = [...seances].sort((a, b) => a.date.localeCompare(b.date))[0]?.date || today();
+  const [fy, fm, fj] = firstDate.split('-');
+  const num          = `${fy}-${fm}-${fj}-${String(DB.nextNum).padStart(2, '0')}`;
+  DB.nextNum++;
 
+  const paiements = [...new Set(seances.map(s => s.paiement).filter(Boolean))];
   const f = {
     id: uid(), num, patientId: pId, seancesIds: ids,
-    date:     document.getElementById('f-date').value,
-    echeance: document.getElementById('f-echeance').value,
-    objet:    document.getElementById('f-objet').value,
-    paiementsSeances: paiements,
-    total, createdAt: new Date().toISOString()
+    date:             document.getElementById('f-date').value,
+    echeance:         document.getElementById('f-echeance').value,
+    objet:            document.getElementById('f-objet').value,
+    paiementsSeances: paiements, total,
+    createdAt:        new Date().toISOString()
   };
 
   DB.factures.push(f);
   ids.forEach(id => { const s = DB.seances.find(s => s.id === id); if (s) { s.facture = f.id; s.statut = 'réglée'; } });
-  dbSave();
-  closeModal('modal-facture');
-  renderFactures();
-  toast('Facture ' + num + ' générée ✓', 'success');
+  dbSave(); closeModal('modal-facture'); renderFactures();
+  toast(`Facture ${num} générée ✓`, 'success');
   setTimeout(() => viewFacture(f.id), 300);
 }
 
-// Build invoice HTML (shared for view + print)
+// Construit le HTML de la facture (aperçu + impression)
 function buildInvoice(f) {
-  const p = DB.patients.find(p => p.id === f.patientId);
-  const seances = f.seancesIds.map(sid => DB.seances.find(s => s.id === sid)).filter(Boolean)
-                   .sort((a,b) => a.date.localeCompare(b.date));
-  const pName   = p ? p.prenom + ' ' + p.nom.toUpperCase() : '—';
+  const p       = DB.patients.find(p => p.id === f.patientId);
+  const seances = f.seancesIds.map(sid => DB.seances.find(s => s.id === sid)).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+  const pName   = p ? `${p.prenom} ${p.nom.toUpperCase()}` : '—';
   const isTVA   = CFG.tvaMention && !CFG.tvaMention.startsWith('Exonéré') && !CFG.tvaMention.startsWith('TVA non applicable');
-  const ht      = isTVA ? (f.total / 1.20) : f.total;
-  const tva     = isTVA ? (f.total - f.total / 1.20) : 0;
-  const adr     = [CFG.adresse, CFG.cp && CFG.ville ? CFG.cp + ' ' + CFG.ville : ''].filter(Boolean).join('<br>');
+  const ht      = isTVA ? f.total / 1.20 : f.total;
+  const tva     = isTVA ? f.total - f.total / 1.20 : 0;
+  const adr     = [CFG.adresse, CFG.cp && CFG.ville ? `${CFG.cp} ${CFG.ville}` : ''].filter(Boolean).join('<br>');
 
-  // Déterminer si toutes les séances de la facture sont réglées
+  // Infos de règlement (dédupliquées)
   const toutesReglees = seances.every(s => s.statut === 'réglée');
-  // Regrouper les infos de règlement (date + mode)
-  const reglements = seances
-    .filter(s => s.statut === 'réglée' && s.dateReglement)
-    .map(s => ({ date: s.dateReglement, mode: s.paiement || '' }));
-  // On groupe par date+mode pour éviter doublons
-  const regUniques = [...new Map(reglements.map(r => [r.date + '|' + r.mode, r])).values()];
+  const regUniques    = [...new Map(
+    seances.filter(s => s.statut === 'réglée' && s.dateReglement)
+           .map(s => [`${s.dateReglement}|${s.paiement || ''}`, { date: s.dateReglement, mode: s.paiement || '' }])
+  ).values()];
 
-  const totalSection = toutesReglees && regUniques.length > 0
-    ? `<div class="inv-total-section">
-        <div class="inv-total-row">
-          <span class="inv-total-label">Total HT</span>
-          <span class="inv-total-value">${fmtMoney(ht)}</span>
-        </div>
-        ${isTVA ? `<div class="inv-total-row">
-          <span class="inv-total-label">TVA (20 %)</span>
-          <span class="inv-total-value">${fmtMoney(tva)}</span>
-        </div>` : ''}
-        <div class="inv-total-row" style="border-top:1px solid var(--beige-mid);padding-top:.5rem;margin-top:.25rem;">
-          <span class="inv-total-label inv-grand-total-label">Total TTC</span>
-          <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
-        </div>
-      </div>`
-    : `<div class="inv-total-section">
-        <div class="inv-total-row">
-          <span class="inv-total-label">Total HT</span>
-          <span class="inv-total-value">${fmtMoney(ht)}</span>
-        </div>
-        ${isTVA ? `<div class="inv-total-row">
-          <span class="inv-total-label">TVA (20 %)</span>
-          <span class="inv-total-value">${fmtMoney(tva)}</span>
-        </div>` : ''}
-        <div class="inv-total-row" style="border-top:1px solid var(--beige-mid);padding-top:.5rem;margin-top:.25rem;">
-          <span class="inv-total-label inv-grand-total-label">Total TTC à régler</span>
-          <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
-        </div>
-      </div>`;
+  // Section totaux
+  const totalSection = `<div class="inv-total-section">
+    <div class="inv-total-row">
+      <span class="inv-total-label">Total HT</span>
+      <span class="inv-total-value">${fmtMoney(ht)}</span>
+    </div>
+    ${isTVA ? `<div class="inv-total-row"><span class="inv-total-label">TVA (20 %)</span><span class="inv-total-value">${fmtMoney(tva)}</span></div>` : ''}
+    <div class="inv-total-row" style="border-top:1px solid var(--beige-mid);padding-top:.5rem;margin-top:.25rem;">
+      <span class="inv-total-label inv-grand-total-label">${toutesReglees && regUniques.length ? 'Total TTC' : 'Total TTC à régler'}</span>
+      <span class="inv-total-value inv-grand-total-value">${fmtMoney(f.total)}</span>
+    </div>
+  </div>`;
+
+  // Modalités de règlement
+  const regModes = f.paiementsSeances?.length ? f.paiementsSeances.join(', ') : (CFG.paiements || '');
+  const regLine  = toutesReglees && regUniques.length
+    ? (regUniques.length === 1
+        ? `<span style="color:var(--sage-dark);font-weight:500;">✓ Réglé le ${formatDate(regUniques[0].date)}${regUniques[0].mode ? `, ${fmtMoney(f.total)} par ${regUniques[0].mode}` : ` — ${fmtMoney(f.total)}`}</span><br>`
+        : regUniques.map(r => `<span style="color:var(--sage-dark);font-weight:500;">✓ Réglé le ${formatDate(r.date)}${r.mode ? ' par ' + r.mode : ''}</span>`).join('<br>') + '<br>')
+    : (regModes ? `Mode(s) de paiement : ${regModes}<br>` : '');
+
+  const payBlock = `<div class="inv-payment-block">
+    <strong>Modalités de règlement</strong><br>
+    ${regLine}
+    ${CFG.iban ? `IBAN : ${CFG.iban}<br>` : ''}
+    ${CFG.bic  ? `BIC : ${CFG.bic}${CFG.banque ? ' (' + CFG.banque + ')' : ''}<br>` : ''}
+    Référence Facture : ${f.num} – ${pName}
+  </div>`;
 
   const lignes = seances.map(s => `<tr>
     <td>${formatDate(s.date)}</td>
@@ -1170,36 +1540,24 @@ function buildInvoice(f) {
     <td style="text-align:right;font-family:var(--font-serif);">${fmtMoney(s.tarif)}</td>
   </tr>`).join('');
 
-  // Règlement : from séances paiement modes stored at facture creation
-  const regModes = (f.paiementsSeances && f.paiementsSeances.length > 0)
-    ? f.paiementsSeances.join(', ')
-    : (CFG.paiements || '');
-
-  // Ligne de règlement pour le payBlock
-  const regLine = toutesReglees && regUniques.length > 0
-    ? (regUniques.length === 1
-        ? `<span style="color:var(--sage-dark);font-weight:500;">✓ Réglé le ${formatDate(regUniques[0].date)}${regUniques[0].mode ? ', ' + fmtMoney(f.total) + ' par ' + regUniques[0].mode : ' — ' + fmtMoney(f.total)}</span><br>`
-        : regUniques.map(r => `<span style="color:var(--sage-dark);font-weight:500;">✓ Réglé le ${formatDate(r.date)}${r.mode ? ' par ' + r.mode : ''}</span>`).join('<br>') + '<br>')
-    : (regModes ? 'Mode(s) de paiement : ' + regModes + '<br>' : '');
-
-  const payBlock = `<div class="inv-payment-block">
-    <strong>Modalités de règlement</strong><br>
-    ${regLine}
-    ${CFG.iban   ? 'IBAN : ' + CFG.iban + '<br>' : ''}
-    ${CFG.bic    ? 'BIC : ' + CFG.bic + (CFG.banque ? ' (' + CFG.banque + ')' : '') + '<br>' : ''}
-    Référence Facture : ${f.num} – ${pName}
-  </div>`;
+  // Logo limité à 64px de hauteur pour ne pas envahir l'en-tête
+  const logoHtml = CFG.logo
+    ? `<img src="${CFG.logo}" alt="Logo" style="max-height:64px;max-width:150px;object-fit:contain;flex-shrink:0;">`
+    : '';
 
   return `<div class="invoice-preview" id="printable-invoice">
     <div class="inv-header">
-      <div>
-        <div class="inv-logo-name">${CFG.prenom} ${CFG.nom.toUpperCase()}</div>
-        <div class="inv-logo-sub">${CFG.titre || 'Psychothérapeute'}${CFG.formation ? ' · ' + CFG.formation : ''}</div>
-        <div style="margin-top:.75rem;font-size:12px;color:var(--warm-mid);line-height:1.7;">
-          ${adr}${CFG.tel ? '<br>' + CFG.tel : ''}${CFG.email ? '<br>' + CFG.email : ''}
+      <div style="display:flex;align-items:flex-start;gap:.85rem;">
+        ${logoHtml}
+        <div>
+          <div class="inv-logo-name">${CFG.prenom} ${CFG.nom.toUpperCase()}</div>
+          <div class="inv-logo-sub">${CFG.titre || 'Psychothérapeute'}${CFG.formation ? ' · ' + CFG.formation : ''}</div>
+          <div style="margin-top:.75rem;font-size:12px;color:var(--warm-mid);line-height:1.7;">
+            ${adr}${CFG.tel ? '<br>' + CFG.tel : ''}${CFG.email ? '<br>' + CFG.email : ''}
+          </div>
         </div>
       </div>
-      <div class="inv-num-block" style="text-align:right;">
+      <div style="text-align:right;">
         <div style="font-size:10px;color:var(--warm-mid);font-weight:500;text-transform:uppercase;letter-spacing:.06em;">Facture</div>
         <div style="font-size:20px;font-family:var(--font-serif);color:var(--warm-dark);margin:.2rem 0;">${f.num}</div>
         <div style="font-size:12px;color:var(--warm-mid);line-height:1.7;">
@@ -1222,62 +1580,48 @@ function buildInvoice(f) {
       <div>
         <div class="inv-party-label">Destinataire / Patient</div>
         <div class="inv-party-name">${pName}</div>
-        <div class="inv-party-detail">${p && p.adresse ? p.adresse : '<em style="color:var(--warm-light);">Adresse non renseignée</em>'}</div>
+        <div class="inv-party-detail">${p?.adresse || '<em style="color:var(--warm-light);">Adresse non renseignée</em>'}</div>
       </div>
     </div>
 
     <table class="inv-table">
-      <thead>
-        <tr>
-          <th style="width:18%;">Date</th>
-          <th>Désignation</th>
-          <th style="width:8%;text-align:center;">Qté</th>
-          <th style="width:16%;text-align:right;">P.U. HT</th>
-          <th style="width:16%;text-align:right;">Montant HT</th>
-        </tr>
-      </thead>
+      <thead><tr>
+        <th style="width:18%;">Date</th>
+        <th>Désignation</th>
+        <th style="width:8%;text-align:center;">Qté</th>
+        <th style="width:16%;text-align:right;">P.U. HT</th>
+        <th style="width:16%;text-align:right;">Montant HT</th>
+      </tr></thead>
       <tbody>${lignes}</tbody>
     </table>
 
     ${totalSection}
-
     ${CFG.tvaMention ? `<div class="inv-legal">${CFG.tvaMention}</div>` : ''}
     ${payBlock}
-
-    <div class="inv-footer">
-      ${CFG.prenom} ${CFG.nom.toUpperCase()}${CFG.titre ? ' — ' + CFG.titre : ''}<br>
-      SIRET ${CFG.siret}${CFG.tvaNum ? ' · N° TVA : ' + CFG.tvaNum : ''}<br>
-      ${[CFG.adresse, CFG.cp && CFG.ville ? CFG.cp + ' ' + CFG.ville : ''].filter(Boolean).join(', ')}${CFG.tel ? ' · ' + CFG.tel : ''}
-      ${CFG.formation ? '<br><em>' + CFG.formation + '</em>' : ''}
-    </div>
   </div>`;
 }
 
 function viewFacture(id) {
   const f = DB.factures.find(f => f.id === id); if (!f) return;
   document.getElementById('facture-view-content').innerHTML = buildInvoice(f);
-  // Store current facture id for PDF naming
   document.getElementById('modal-facture-view').dataset.factureId = id;
   document.getElementById('modal-facture-view').classList.remove('hidden');
 }
 
 function printFacture() {
-  const id = document.getElementById('modal-facture-view').dataset.factureId;
-  const f  = DB.factures.find(f => f.id === id);
-  const p  = f ? DB.patients.find(p => p.id === f.patientId) : null;
-  const pNom = p ? p.nom.toUpperCase().replace(/\s+/g,'-') : 'PATIENT';
-
-  // PDF filename: Facture-NOMPATIENT-DATEPREMIESEANCE.pdf
-  const firstSeance = f ? DB.seances.find(s => f.seancesIds.includes(s.id)) : null;
-  const dateStr = firstSeance ? firstSeance.date.replace(/-/g,'') : (f ? f.date.replace(/-/g,'') : '');
-  const filename = `Facture-${pNom}-${dateStr}`;
+  const id  = document.getElementById('modal-facture-view').dataset.factureId;
+  const f   = DB.factures.find(f => f.id === id);
+  const p   = f ? DB.patients.find(p => p.id === f.patientId) : null;
+  const nom = p ? p.nom.toUpperCase().replace(/\s+/g, '-') : 'PATIENT';
+  const s0  = f ? DB.seances.find(s => f.seancesIds.includes(s.id)) : null;
+  const ds  = s0 ? s0.date.replace(/-/g, '') : (f?.date.replace(/-/g, '') || '');
 
   const content = document.getElementById('printable-invoice').outerHTML;
   const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${filename}</title>
+  w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Facture-${nom}-${ds}</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
-  :root{--sage:#6b8f71;--sage-dark:#4a6b50;--sage-pale:#e8f0e9;--sage-light:#a8c4a2;--beige:#f7f3ee;--beige-mid:#ede5d8;--warm-dark:#3d3530;--warm-mid:#7a6e67;--font-serif:'Cormorant Garamond',Georgia,serif;--font-sans:'DM Sans',system-ui,sans-serif;}
+  :root{--sage:#6b8f71;--sage-dark:#4a6b50;--sage-pale:#e8f0e9;--sage-light:#a8c4a2;--beige:#f7f3ee;--beige-mid:#ede5d8;--warm-dark:#3d3530;--warm-mid:#7a6e67;--warm-light:#b8afa8;--font-serif:'Cormorant Garamond',Georgia,serif;--font-sans:'DM Sans',system-ui,sans-serif;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:var(--font-sans);color:var(--warm-dark);padding:2cm;}
   .invoice-preview{max-width:100%;}
@@ -1300,7 +1644,6 @@ function printFacture() {
   .inv-legal{font-size:11px;color:var(--warm-mid);background:var(--beige);padding:.6rem .85rem;border-radius:4px;margin-bottom:1rem;line-height:1.6;}
   .inv-payment-block{background:var(--sage-pale);border:1px solid var(--sage-light);border-radius:8px;padding:.75rem 1rem;font-size:12px;margin-bottom:1rem;line-height:1.7;}
   .inv-payment-block strong{color:var(--sage-dark);}
-  .inv-footer{margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--beige-mid);font-size:11px;color:var(--warm-mid);line-height:1.7;}
   </style></head><body>${content}</body></html>`);
   w.document.close();
   setTimeout(() => w.print(), 600);
@@ -1308,12 +1651,12 @@ function printFacture() {
 
 function renderFactures() {
   const el = document.getElementById('factures-list');
-  if (DB.factures.length === 0) {
+  if (!DB.factures.length) {
     el.innerHTML = `<div class="card"><div class="empty-state"><div class="ei">◻</div><p>Aucune facture générée</p>
       <button class="btn btn-primary" onclick="openModal('modal-facture')">+ Créer une facture</button></div></div>`;
     return;
   }
-  const sorted  = [...DB.factures].sort((a,b) => b.date.localeCompare(a.date));
+  const sorted  = [...DB.factures].sort((a, b) => b.date.localeCompare(a.date));
   const totalCA = DB.factures.reduce((a, f) => a + f.total, 0);
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
@@ -1323,7 +1666,7 @@ function renderFactures() {
     <div class="card" style="padding:0;">
       ${sorted.map(f => {
         const pn = getPatientName(f.patientId);
-        const pm = (f.paiementsSeances && f.paiementsSeances.length) ? f.paiementsSeances.join(', ') : '—';
+        const pm = f.paiementsSeances?.length ? f.paiementsSeances.join(', ') : '—';
         return `<div class="invoice-row" onclick="viewFacture('${f.id}')">
           <div style="font-size:13px;font-weight:500;color:var(--sage-dark);min-width:100px;">${f.num}</div>
           <div style="flex:1;">
@@ -1336,207 +1679,157 @@ function renderFactures() {
     </div>`;
 }
 
-// ════════════════════════════════════════
-// DASHBOARD & CALENDRIER
-// ════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════
+// TABLEAU DE BORD
+// ════════════════════════════════════════════════════════
+
 let calDate = new Date();
 function calNav(dir) { calDate.setMonth(calDate.getMonth() + dir); renderCalendar(); }
 
 function renderDashboard() {
   const now = new Date(), mo = now.getMonth(), yr = now.getFullYear();
+
   document.getElementById('st-p').textContent = DB.patients.filter(p => p.statut === 'actif').length;
 
-  // Séances du mois
-  const seancesMois = DB.seances.filter(s => {
-    const d = new Date(s.date);
-    return d.getMonth() === mo && d.getFullYear() === yr;
-  });
-  const honoreesMois = seancesMois.filter(s => s.statut === 'honoré' || s.statut === 'réglée');
+  const seancesMois    = DB.seances.filter(s => { const d = new Date(s.date); return d.getMonth() === mo && d.getFullYear() === yr; });
+  const honoreesMois   = seancesMois.filter(s => s.statut === 'honoré' || s.statut === 'réglée');
   const planifieesMois = seancesMois.filter(s => s.statut === 'planifié');
-  document.getElementById('st-s').textContent = honoreesMois.length + ' / ' + (honoreesMois.length + planifieesMois.length);
+  document.getElementById('st-s').textContent = `${honoreesMois.length} / ${honoreesMois.length + planifieesMois.length}`;
 
-  // À facturer : réglées / honorées non encore facturées
-  const regléesNonFact = DB.seances.filter(s => s.statut === 'réglée' && !s.facture).length;
-  const honoréesNonFact = DB.seances.filter(s => s.statut === 'honoré' && !s.facture).length;
-  const totalAFacturer = regléesNonFact + honoréesNonFact;
-  document.getElementById('st-f').textContent = regléesNonFact + ' / ' + totalAFacturer;
+  const regléesNF  = DB.seances.filter(s => s.statut === 'réglée' && !s.facture).length;
+  const honoréesNF = DB.seances.filter(s => s.statut === 'honoré' && !s.facture).length;
+  const totalFact  = regléesNF + honoréesNF;
+  document.getElementById('st-f').textContent = `${regléesNF} / ${totalFact}`;
   const cardF = document.getElementById('st-f-card');
-  if (totalAFacturer > 0) {
-    cardF.style.cursor = 'pointer';
-    cardF.onclick = showAFacturerModal;
-    cardF.title   = 'Voir les séances à facturer';
-    cardF.classList.add('stat-card-clickable');
-  } else {
-    cardF.style.cursor = '';
-    cardF.onclick = null;
-    cardF.title   = '';
-    cardF.classList.remove('stat-card-clickable');
-  }
+  cardF.style.cursor = totalFact > 0 ? 'pointer' : '';
+  cardF.onclick      = totalFact > 0 ? showAFacturerModal : null;
+  cardF.title        = totalFact > 0 ? 'Voir les séances à facturer' : '';
+  cardF.classList.toggle('stat-card-clickable', totalFact > 0);
 
-  // CA : total réglées du mois / total séances du mois
-  const caReglees = honoreesMois.filter(s => s.statut === 'réglée').reduce((a, s) => a + s.tarif, 0);
-  const caTotal   = seancesMois.filter(s => s.statut !== 'annulé').reduce((a, s) => a + s.tarif, 0);
-  document.getElementById('st-ca').textContent = fmtNum(caReglees) + ' / ' + fmtNum(caTotal) + ' €';
+  const caR = honoreesMois.filter(s => s.statut === 'réglée').reduce((a, s) => a + s.tarif, 0);
+  const caT = seancesMois.filter(s => s.statut !== 'annulé').reduce((a, s) => a + s.tarif, 0);
+  document.getElementById('st-ca').textContent = `${fmtNum(caR)} / ${fmtNum(caT)} €`;
 
-  renderCalendar();
-  renderUpcoming();
+  renderCalendar(); renderUpcoming();
 }
 
 function goToPatients(statut) {
-  const btn = document.querySelectorAll('.nav-btn')[1];
-  showPage('patients', btn);
+  showPage('patients', document.querySelectorAll('.nav-btn')[1]);
   document.getElementById('filter-patient-statut').value = statut || '';
   document.getElementById('search-patients').value = '';
   renderPatients();
 }
 
 function goToSeancesMois() {
-  const btn = document.querySelectorAll('.nav-btn')[2];
-  showPage('seances', btn);
-  // Filtre sur le 1er jour du mois courant avec filter-date vide — on filtre via statut+mois custom
-  const now = new Date();
-  const yr  = now.getFullYear();
-  const mo  = String(now.getMonth() + 1).padStart(2, '0');
-  // On passe par un filtre mois injecté dans filter-date via data attribute
-  document.getElementById('filter-date').value = '';
-  document.getElementById('filter-date').dataset.mois = yr + '-' + mo;
+  showPage('seances', document.querySelectorAll('.nav-btn')[2]);
+  const now     = new Date();
+  const moisStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  document.getElementById('filter-date').value   = '';
   document.getElementById('filter-statut').value = '';
   populateFilterPat();
-  renderSeancesMois(yr + '-' + mo);
+  renderSeancesMois(moisStr);
 }
 
 function renderSeancesMois(moisStr) {
-  // Remplace renderSeances pour afficher les séances du mois ciblé
-  const st   = document.getElementById('filter-statut').value;
-  const pid  = document.getElementById('filter-pat').value;
-  let list   = [...DB.seances]
-    .filter(s => s.date.startsWith(moisStr))
-    .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+  const st  = document.getElementById('filter-statut').value;
+  const pid = document.getElementById('filter-pat').value;
+  let list  = [...DB.seances].filter(s => s.date.startsWith(moisStr)).sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
   if (st)  list = list.filter(s => s.statut === st);
   if (pid) list = list.filter(s => s.patientId === pid);
 
-  const el = document.getElementById('seances-list');
-
-  // Badge de filtre actif
   const [yr, mo] = moisStr.split('-');
-  const labelMois = MOIS_NOMS[parseInt(mo) - 1] + ' ' + yr;
+  const label    = `${MOIS_NOMS[parseInt(mo) - 1]} ${yr}`;
+  const el       = document.getElementById('seances-list');
+
   let html = `<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;font-size:13px;color:var(--sage-dark);background:var(--sage-pale);border:1px solid var(--sage-light);border-radius:var(--radius-sm);padding:.4rem .75rem;">
-    <span>📅 Filtre : <strong>${labelMois}</strong></span>
-    <button class="btn btn-secondary btn-xs" style="margin-left:auto;" onclick="delete document.getElementById('filter-date').dataset.mois;renderSeances();">✕ Retirer le filtre</button>
+    📅 Filtre : <strong>${label}</strong>
+    <button class="btn btn-secondary btn-xs" style="margin-left:auto;" onclick="renderSeances()">✕ Retirer</button>
   </div>`;
 
-  if (list.length === 0) {
-    html += `<div class="empty-state"><div class="ei">◷</div><p>Aucune séance en ${labelMois}</p></div>`;
-    el.innerHTML = html;
-    return;
+  if (!list.length) {
+    html += `<div class="empty-state"><div class="ei">◷</div><p>Aucune séance en ${label}</p></div>`;
+  } else {
+    list.forEach(s => {
+      const [, m, j] = s.date.split('-');
+      html += `<div class="rdv-item" onclick="viewSeance('${s.id}')">
+        <div class="rdv-date"><div class="day">${parseInt(j)}</div><div class="month">${MOIS_SHORT[parseInt(m) - 1]}</div></div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;">${getPatientName(s.patientId)}</div>
+          <div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${s.heure} · ${s.duree} min${s.paiement ? ' · ' + s.paiement : ''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span class="badge badge-${s.statut}">${s.statut}</span>
+          <span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span>
+        </div>
+      </div>`;
+    });
   }
-  list.forEach(s => {
-    const pn = getPatientName(s.patientId);
-    const d  = s.date.split('-');
-    const mo = MOIS_SHORT[parseInt(d[1])-1];
-    html += `<div class="rdv-item" onclick="viewSeance('${s.id}')">
-      <div class="rdv-date"><div class="day">${d[2]}</div><div class="month">${mo}</div></div>
-      <div style="flex:1;">
-        <div style="font-size:14px;font-weight:500;">${pn}</div>
-        <div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${s.heure} · ${s.duree} min${s.paiement ? ' · ' + s.paiement : ''}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-        <span class="badge badge-${s.statut}">${s.statut}</span>
-        <span style="font-family:var(--font-serif);font-size:17px;">${s.tarif} €</span>
-      </div>
-    </div>`;
-  });
   el.innerHTML = html;
 }
 
 function showCaModal() {
-  const now = new Date();
-  const mo  = now.getMonth(), yr = now.getFullYear();
-  const labelMois = MOIS_NOMS[mo] + ' ' + yr;
-
-  // Toutes les séances du mois (hors annulées)
+  const now        = new Date(), mo = now.getMonth(), yr = now.getFullYear();
+  const label      = `${MOIS_NOMS[mo]} ${yr}`;
   const seancesMois = DB.seances.filter(s => {
     const d = new Date(s.date);
     return d.getMonth() === mo && d.getFullYear() === yr && s.statut !== 'annulé';
-  }).sort((a,b) => a.date.localeCompare(b.date));
+  }).sort((a, b) => a.date.localeCompare(b.date));
 
   const reglees    = seancesMois.filter(s => s.statut === 'réglée');
   const honorees   = seancesMois.filter(s => s.statut === 'honoré');
   const planifiees = seancesMois.filter(s => s.statut === 'planifié');
+  const caR = reglees.reduce((a, s) => a + s.tarif, 0);
+  const caH = honorees.reduce((a, s) => a + s.tarif, 0);
+  const caP = planifiees.reduce((a, s) => a + s.tarif, 0);
+  const caT = caR + caH + caP;
+  const pct = caT > 0 ? Math.min(100, caR / caT * 100) : 0;
 
-  const caRegle    = reglees.reduce((a,s) => a + s.tarif, 0);
-  const caHonore   = honorees.reduce((a,s) => a + s.tarif, 0);
-  const caPlanifie = planifiees.reduce((a,s) => a + s.tarif, 0);
-  const caTotal    = caRegle + caHonore + caPlanifie;
-
-  function lignes(liste) {
-    if (!liste.length) return '<div style="color:var(--warm-mid);font-size:13px;padding:.4rem 0;">Aucune</div>';
-    return liste.map(s => `
-      <div style="display:flex;align-items:center;gap:.75rem;padding:.45rem 0;border-bottom:1px solid var(--beige-mid);font-size:13px;">
+  const lignes = ls => !ls.length
+    ? '<div style="color:var(--warm-mid);font-size:13px;padding:.4rem 0;">Aucune</div>'
+    : ls.map(s => `<div style="display:flex;align-items:center;gap:.75rem;padding:.45rem 0;border-bottom:1px solid var(--beige-mid);font-size:13px;">
         <span style="min-width:100px;color:var(--warm-mid);">${formatDateShort(s.date)}</span>
         <span style="flex:1;">${getPatientName(s.patientId, false)}</span>
         ${s.paiement ? `<span style="font-size:11px;color:var(--warm-mid);">${s.paiement}</span>` : ''}
         <span style="font-family:var(--font-serif);font-size:15px;">${fmtMoney(s.tarif)}</span>
       </div>`).join('');
-  }
 
-  function bloc(titre, couleur, liste, total, icon) {
-    return `<div style="margin-bottom:1.25rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;">
-        <div style="font-weight:500;font-size:13px;color:${couleur};">${icon} ${titre} (${liste.length})</div>
-        <div style="font-family:var(--font-serif);font-size:18px;color:${couleur};">${fmtMoney(total)}</div>
-      </div>
-      <div style="border-left:3px solid ${couleur};padding-left:.75rem;">${lignes(liste)}</div>
-    </div>`;
-  }
-
-  document.getElementById('modal-ca-title').textContent = 'CA — ' + labelMois;
-  document.getElementById('modal-ca-content').innerHTML = `
-    <!-- Résumé -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem;">
-      <div class="stat-card" style="padding:.75rem;">
-        <div class="stat-label">Encaissé</div>
-        <div style="font-family:var(--font-serif);font-size:22px;color:var(--success);">${fmtMoney(caRegle)}</div>
-      </div>
-      <div class="stat-card" style="padding:.75rem;">
-        <div class="stat-label">À encaisser</div>
-        <div style="font-family:var(--font-serif);font-size:22px;color:var(--info);">${fmtMoney(caHonore)}</div>
-      </div>
-      <div class="stat-card" style="padding:.75rem;">
-        <div class="stat-label">Total prévu</div>
-        <div style="font-family:var(--font-serif);font-size:22px;color:var(--sage-dark);">${fmtMoney(caTotal)}</div>
-      </div>
+  const bloc = (titre, col, ls, total, icon) => `<div style="margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;">
+      <div style="font-weight:500;font-size:13px;color:${col};">${icon} ${titre} (${ls.length})</div>
+      <div style="font-family:var(--font-serif);font-size:18px;color:${col};">${fmtMoney(total)}</div>
     </div>
+    <div style="border-left:3px solid ${col};padding-left:.75rem;">${lignes(ls)}</div>
+  </div>`;
 
-    <!-- Jauge de progression -->
+  document.getElementById('modal-ca-title').textContent = `CA — ${label}`;
+  document.getElementById('modal-ca-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem;">
+      <div class="stat-card" style="padding:.75rem;"><div class="stat-label">Encaissé</div><div style="font-family:var(--font-serif);font-size:22px;color:var(--success);">${fmtMoney(caR)}</div></div>
+      <div class="stat-card" style="padding:.75rem;"><div class="stat-label">À encaisser</div><div style="font-family:var(--font-serif);font-size:22px;color:var(--info);">${fmtMoney(caH)}</div></div>
+      <div class="stat-card" style="padding:.75rem;"><div class="stat-label">Total prévu</div><div style="font-family:var(--font-serif);font-size:22px;color:var(--sage-dark);">${fmtMoney(caT)}</div></div>
+    </div>
     <div style="margin-bottom:1.5rem;">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--warm-mid);margin-bottom:.3rem;">
-        <span>Encaissé ${caTotal > 0 ? Math.round(caRegle/caTotal*100) : 0} %</span>
-        <span>${fmtMoney(caRegle)} / ${fmtMoney(caTotal)}</span>
+        <span>Encaissé ${Math.round(pct)} %</span><span>${fmtMoney(caR)} / ${fmtMoney(caT)}</span>
       </div>
       <div style="background:var(--beige-mid);border-radius:8px;height:10px;overflow:hidden;">
-        <div style="height:100%;border-radius:8px;background:var(--success);width:${caTotal > 0 ? Math.min(100, caRegle/caTotal*100) : 0}%;transition:width .4s;"></div>
+        <div style="height:100%;border-radius:8px;background:var(--success);width:${pct}%;transition:width .4s;"></div>
       </div>
     </div>
-
-    ${bloc('Séances réglées', 'var(--success)', reglees, caRegle, '✓')}
-    ${bloc('Séances honorées (non réglées)', 'var(--info)', honorees, caHonore, '◷')}
-    ${planifiees.length ? bloc('Séances planifiées', 'var(--warm-mid)', planifiees, caPlanifie, '📅') : ''}
-  `;
+    ${bloc('Séances réglées', 'var(--success)', reglees, caR, '✓')}
+    ${bloc('Séances honorées (non réglées)', 'var(--info)', honorees, caH, '◷')}
+    ${planifiees.length ? bloc('Séances planifiées', 'var(--warm-mid)', planifiees, caP, '📅') : ''}`;
   document.getElementById('modal-ca').classList.remove('hidden');
 }
 
 function showAFacturerModal() {
   const seances = DB.seances
     .filter(s => (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
-    .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
+    .sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure));
 
-  // Grouper par patient
   const byPatient = {};
-  seances.forEach(s => {
-    if (!byPatient[s.patientId]) byPatient[s.patientId] = [];
-    byPatient[s.patientId].push(s);
-  });
+  seances.forEach(s => { if (!byPatient[s.patientId]) byPatient[s.patientId] = []; byPatient[s.patientId].push(s); });
 
   const html = Object.entries(byPatient).map(([pid, ss]) => {
     const pn    = getPatientName(pid);
@@ -1560,59 +1853,52 @@ function showAFacturerModal() {
     </div>`;
   }).join('');
 
-  document.getElementById('a-facturer-content').innerHTML = html ||
-    '<div style="color:var(--warm-mid);font-size:13px;">Aucune séance à facturer.</div>';
+  document.getElementById('a-facturer-content').innerHTML = html || '<div style="color:var(--warm-mid);font-size:13px;">Aucune séance à facturer.</div>';
   document.getElementById('modal-a-facturer').classList.remove('hidden');
 }
 
 function renderCalendar() {
-  const todayD = new Date();
-  const yr = calDate.getFullYear(), mo = calDate.getMonth();
-  document.getElementById('cal-title').textContent = MOIS_NOMS[mo] + ' ' + yr;
+  const todayD  = new Date();
+  const yr      = calDate.getFullYear(), mo = calDate.getMonth();
+  const moisStr = `${yr}-${String(mo + 1).padStart(2, '0')}`;
+  document.getElementById('cal-title').textContent = `${MOIS_NOMS[mo]} ${yr}`;
+
   const fo  = (new Date(yr, mo, 1).getDay() + 6) % 7;
   const dim = new Date(yr, mo + 1, 0).getDate();
 
-  // Map jour -> séances de ce jour
+  // Séances du mois
   const rdvMap = {};
-  DB.seances
-    .filter(s => { const d = new Date(s.date); return d.getMonth() === mo && d.getFullYear() === yr; })
-    .forEach(s => {
-      const j = parseInt(s.date.split('-')[2]);
-      if (!rdvMap[j]) rdvMap[j] = [];
-      rdvMap[j].push(s);
-    });
+  DB.seances.filter(s => s.date.startsWith(moisStr)).forEach(s => {
+    const j = parseInt(s.date.split('-')[2]);
+    if (!rdvMap[j]) rdvMap[j] = [];
+    rdvMap[j].push(s);
+  });
 
-  // Jours indisponibles de ce mois (ponctuels)
+  // Jours indisponibles
   const indispoSet = new Set(
-    (DB.indisponibilites || [])
-      .filter(i => i.date.startsWith(yr + '-' + String(mo + 1).padStart(2,'0')))
-      .map(i => parseInt(i.date.split('-')[2]))
+    (DB.indisponibilites || []).filter(i => i.date.startsWith(moisStr)).map(i => parseInt(i.date.split('-')[2]))
   );
-  // Jours couverts par les règles récurrentes
   for (let d = 1; d <= dim; d++) {
-    const dateStr = yr + '-' + String(mo + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    if (getIndispoRegleForDate(dateStr)) indispoSet.add(d);
+    if (getIndispoRegleForDate(`${moisStr}-${String(d).padStart(2, '0')}`)) indispoSet.add(d);
   }
 
-  const dn = ['Lu','Ma','Me','Je','Ve','Sa','Di'];
-  let h = dn.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+  const jNoms = ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'];
+  let h = jNoms.map(j => `<div class="cal-day-name">${j}</div>`).join('');
   for (let i = 0; i < fo; i++) h += '<div class="cal-day empty"></div>';
   for (let d = 1; d <= dim; d++) {
-    const it      = d === todayD.getDate() && mo === todayD.getMonth() && yr === todayD.getFullYear();
+    const isToday = d === todayD.getDate() && mo === todayD.getMonth() && yr === todayD.getFullYear();
     const hasRdv  = !!rdvMap[d];
     const isIndi  = indispoSet.has(d);
-    const dateStr = yr + '-' + String(mo + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    const clickable = hasRdv ? `onclick="goToSeancesByDate('${dateStr}')" title="${rdvMap[d].length} séance(s)"` : '';
-    h += `<div class="cal-day${it ? ' today' : ''}${hasRdv ? ' has-rdv' : ''}${isIndi ? ' is-indispo' : ''}${hasRdv ? ' clickable' : ''}" ${clickable}>${d}</div>`;
+    const ds      = `${moisStr}-${String(d).padStart(2, '0')}`;
+    const click   = hasRdv ? `onclick="goToSeancesByDate('${ds}')" title="${rdvMap[d].length} séance(s)"` : '';
+    const cls     = ['cal-day', isToday ? 'today' : '', hasRdv ? 'has-rdv clickable' : '', isIndi ? 'is-indispo' : ''].filter(Boolean).join(' ');
+    h += `<div class="${cls}" ${click}>${d}</div>`;
   }
   document.getElementById('calendar').innerHTML = h;
 }
 
 function goToSeancesByDate(dateStr) {
-  // Naviguer vers la page Séances avec filtre date
-  const btn = document.querySelectorAll('.nav-btn')[2]; // bouton Séances
-  showPage('seances', btn);
-  // Appliquer le filtre date
+  showPage('seances', document.querySelectorAll('.nav-btn')[2]);
   document.getElementById('filter-date').value = dateStr;
   renderSeances();
 }
@@ -1621,42 +1907,35 @@ function renderUpcoming() {
   const now = today();
   const up  = DB.seances
     .filter(s => s.date >= now && s.statut === 'planifié')
-    .sort((a,b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.heure.localeCompare(b.heure))
     .slice(0, 8);
   const el = document.getElementById('upcoming-list');
-  if (up.length === 0) {
-    el.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;">Aucune séance à venir</div>';
-    return;
-  }
+  if (!up.length) { el.innerHTML = '<div style="color:var(--warm-mid);font-size:13px;">Aucune séance à venir</div>'; return; }
   el.innerHTML = up.map(s => {
-    const pn = getPatientName(s.patientId, false);
-    const d  = s.date.split('-');
-    const mo = MOIS_SHORT[parseInt(d[1])-1];
+    const [, m, j] = s.date.split('-');
     return `<div style="display:flex;align-items:center;gap:.75rem;padding:.55rem 0;border-bottom:1px solid var(--beige-mid);font-size:13px;cursor:pointer;" onclick="viewSeance('${s.id}')">
-      <span style="color:var(--warm-mid);font-size:12px;min-width:75px;">${d[2]} ${mo} ${s.heure}</span>
-      <span style="font-weight:500;">${pn}</span>
+      <span style="color:var(--warm-mid);font-size:12px;min-width:75px;">${parseInt(j)} ${MOIS_SHORT[parseInt(m) - 1]} ${s.heure}</span>
+      <span style="font-weight:500;">${getPatientName(s.patientId, false)}</span>
     </div>`;
   }).join('');
 }
 
-// ════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════
+// INITIALISATION
+// ════════════════════════════════════════════════════════
+
 dbLoad();
 
 if (isConfigured()) {
   document.getElementById('setup-screen').classList.add('hidden');
   updateHeader();
+  refreshLogoPreview('s');
   renderDashboard();
 } else {
   document.getElementById('setup-screen').classList.remove('hidden');
 }
 
-// PWA manifest
-const _manifest = {
-  name: 'Cabinet Psychothérapie', short_name: 'Cabinet Psy',
-  start_url: '.', display: 'standalone',
-  background_color: '#f7f3ee', theme_color: '#6b8f71'
-};
-const _blob = new Blob([JSON.stringify(_manifest)], { type: 'application/manifest+json' });
-document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(_blob));
+// Manifest PWA
+const _manifest = { name: 'Cabinet Psychothérapie', short_name: 'Cabinet Psy', start_url: '.', display: 'standalone', background_color: '#f7f3ee', theme_color: '#6b8f71' };
+document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(_manifest)], { type: 'application/manifest+json' })));

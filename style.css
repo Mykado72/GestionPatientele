@@ -220,6 +220,22 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 /* ── Misc helpers ── */
 .section-title { font-family: var(--font-serif); font-size: 16px; font-weight: 400; color: var(--warm-mid); margin-bottom: .75rem; font-style: italic; }
 .notes-block { background: var(--beige); border-radius: var(--radius-sm); border: 1px solid var(--beige-mid); padding: .85rem 1rem; font-size: 13px; color: var(--warm-dark); line-height: 1.6; white-space: pre-wrap; }
+
+/* ── Suivi thérapeutique ── */
+.suivi-section-hint { font-size: 12px; color: var(--warm-mid); font-style: italic; margin-bottom: .75rem; line-height: 1.5; padding: .35rem .5rem; background: var(--sage-pale); border-radius: 4px; }
+.suivi-content      { white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+.suivi-empty        { padding: .75rem 0; }
+.suivi-tabs-fiche   { border: 1px solid var(--beige-mid); border-radius: var(--radius); padding: 1rem; background: var(--white); margin-bottom: 1.25rem; }
+
+/* ── Google Agenda import ── */
+.gcal-row-done { opacity: .5; background: var(--beige); }
+#gcal-events-tbody tr { border-bottom: 1px solid var(--beige-mid); }
+#gcal-events-tbody td { padding: .5rem .6rem; vertical-align: middle; }
+
+/* ── Google Agenda import ── */
+.gcal-row-done { opacity: .5; background: var(--beige); }
+#gcal-events-tbody tr { border-bottom: 1px solid var(--beige-mid); }
+#gcal-events-tbody td { padding: .5rem .6rem; vertical-align: middle; }
 .divider { border: none; border-top: 1px solid var(--beige-mid); margin: 1rem 0; }
 .empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--warm-mid); }
 .empty-state .ei { font-size: 40px; margin-bottom: 1rem; opacity: .5; }
