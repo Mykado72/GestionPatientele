@@ -112,6 +112,7 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .badge-annulé   { background: var(--danger-pale);  color: var(--danger);  }
 .badge-planifié { background: var(--info-pale);    color: var(--info);    }
 .badge-réglée   { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+.badge-facturé  { background: #ede7f6; color: #4527a0; border: 1px solid #b39ddb; }
 .badge-actif    { background: var(--success-pale); color: var(--success); }
 .badge-inactif  { background: var(--danger-pale);  color: var(--danger);  }
 

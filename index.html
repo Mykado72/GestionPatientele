@@ -201,6 +201,7 @@
         <option value="planifié">Planifiées</option>
         <option value="honoré">Honorées</option>
         <option value="réglée">Réglées</option>
+        <option value="facturé">Facturées</option>
         <option value="annulé">Annulées</option>
       </select>
       <select id="filter-pat" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()">
@@ -466,6 +467,7 @@
           <option value="planifié">Planifiée</option>
           <option value="honoré">Honorée</option>
           <option value="réglée">Réglée</option>
+          <option value="facturé">Facturée</option>
           <option value="annulé">Annulée</option>
         </select>
       </div>
@@ -637,12 +639,23 @@
     </div>
 
     <div class="form-group"><label>Patient <span class="req">*</span></label><select id="f-patient" onchange="populateFactureSeances()"></select></div>
+
     <div class="form-group">
-      <label>Séances à inclure <span class="req">*</span></label>
-      <div id="f-seances-select" style="border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);padding:.5rem;max-height:220px;overflow-y:auto;background:var(--white);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;flex-wrap:wrap;gap:.4rem;">
+        <label style="margin:0;">Séances à inclure <span class="req">*</span></label>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <label style="font-size:12px;color:var(--warm-mid);cursor:pointer;display:flex;align-items:center;gap:.3rem;">
+            <input type="checkbox" id="f-filtre-toutes" onchange="populateFactureSeances()" style="width:auto;accent-color:var(--sage);">
+            Toutes les séances
+          </label>
+          <button type="button" class="btn btn-secondary btn-xs" onclick="document.querySelectorAll('.f-cb').forEach(cb=>cb.checked=true);updateFTotal();">Tout sélectionner</button>
+        </div>
+      </div>
+      <div id="f-seances-select" style="border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);padding:.5rem;max-height:240px;overflow-y:auto;background:var(--white);">
         <div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d'abord</div>
       </div>
     </div>
+
     <div class="form-row">
       <div class="form-group"><label>Date d'émission <span class="req">*</span></label><input type="date" id="f-date"></div>
       <div class="form-group"><label>Date d'échéance <span class="req">*</span></label><input type="date" id="f-echeance"></div>
@@ -655,6 +668,31 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-facture')">Annuler</button>
       <button class="btn btn-primary" onclick="genererFacture()">Générer la facture</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal confirmation paiement avant facturation ── -->
+<div class="modal-overlay hidden" id="modal-facture-paiement">
+  <div class="modal" style="max-width:420px;">
+    <h2 class="modal-title">Mode de règlement requis</h2>
+    <p style="font-size:13px;color:var(--warm-mid);margin-bottom:1rem;line-height:1.5;">
+      <strong id="fp-nb-seances"></strong> séance(s) sélectionnée(s) n'ont pas de mode de règlement défini.<br>
+      Ce champ est obligatoire pour apparaître correctement sur la facture.
+    </p>
+    <div class="form-group">
+      <label>Mode de règlement <span class="req">*</span></label>
+      <select id="fp-paiement">
+        <option value="">— Sélectionner —</option>
+        <option value="Espèces">Espèces</option>
+        <option value="Chèque">Chèque</option>
+        <option value="Virement">Virement</option>
+        <option value="Carte bancaire">Carte bancaire</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-facture-paiement')">Annuler</button>
+      <button class="btn btn-primary" onclick="confirmerPaiementEtFacturer()">Confirmer et générer</button>
     </div>
   </div>
 </div>

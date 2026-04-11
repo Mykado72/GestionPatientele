@@ -1522,29 +1522,40 @@ function initFactureModal() {
 }
 
 function populateFactureSeances() {
-  const pId = document.getElementById('f-patient').value;
-  const c   = document.getElementById('f-seances-select');
+  const pId   = document.getElementById('f-patient').value;
+  const c     = document.getElementById('f-seances-select');
+  const toutes = document.getElementById('f-filtre-toutes')?.checked;
+
   if (!pId) {
     c.innerHTML = `<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d'abord</div>`;
     document.getElementById('f-total-preview').textContent = '0,00 €';
     return;
   }
-  const seances = DB.seances
-    .filter(s => s.patientId === pId && (s.statut === 'réglée' || s.statut === 'honoré') && !s.facture)
-    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // En mode "Toutes" : toutes les séances non encore facturées, quel que soit le statut
+  // En mode normal : uniquement honorées et réglées
+  const seances = DB.seances.filter(s => {
+    if (s.patientId !== pId || s.facture) return false;
+    if (toutes) return s.statut !== 'annulé';
+    return s.statut === 'réglée' || s.statut === 'honoré';
+  }).sort((a, b) => a.date.localeCompare(b.date));
 
   if (!seances.length) {
-    c.innerHTML = `<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Aucune séance honorée/réglée non facturée</div>`;
+    const msg = toutes
+      ? 'Aucune séance non facturée pour ce patient.'
+      : 'Aucune séance honorée/réglée non facturée. Cochez "Toutes les séances" pour voir les séances planifiées.';
+    c.innerHTML = `<div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">${msg}</div>`;
     document.getElementById('f-total-preview').textContent = '0,00 €';
     return;
   }
+
   c.innerHTML = seances.map(s => `
     <label style="display:flex;align-items:center;gap:.75rem;padding:.5rem;cursor:pointer;border-radius:6px;"
       onmouseover="this.style.background='var(--beige)'" onmouseout="this.style.background=''">
       <input type="checkbox" class="f-cb" value="${s.id}" data-tarif="${s.tarif}" onchange="updateFTotal()" style="width:auto;accent-color:var(--sage);">
       <span style="flex:1;font-size:13px;">
         ${formatDate(s.date)} à ${s.heure} — ${s.duree} min
-        ${s.paiement ? `<span style="color:var(--warm-mid);"> · ${s.paiement}</span>` : ''}
+        ${s.paiement ? `<span style="color:var(--warm-mid);"> · ${s.paiement}</span>` : `<span style="color:var(--terra);font-size:11px;"> · règlement non défini</span>`}
         <span class="badge badge-${s.statut}" style="font-size:10px;margin-left:4px;">${s.statut}</span>
       </span>
       <span style="font-family:var(--font-serif);font-size:15px;">${s.tarif} €</span>
@@ -1565,6 +1576,43 @@ function genererFacture() {
 
   const ids     = Array.from(cbs).map(cb => cb.value);
   const seances = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
+
+  // Vérifier les séances sans mode de paiement
+  const sansMode = seances.filter(s => !s.paiement);
+  if (sansMode.length) {
+    // Ouvrir le modal de confirmation du mode de paiement
+    document.getElementById('fp-nb-seances').textContent = sansMode.length;
+    document.getElementById('fp-paiement').value = '';
+    document.getElementById('modal-facture-paiement').classList.remove('hidden');
+    // Stocker les IDs pour reprise après confirmation
+    document.getElementById('modal-facture-paiement').dataset.ids = JSON.stringify(ids);
+    document.getElementById('modal-facture-paiement').dataset.pId = pId;
+    return;
+  }
+
+  _doGenererFacture(pId, ids);
+}
+
+function confirmerPaiementEtFacturer() {
+  const paiement = document.getElementById('fp-paiement').value;
+  if (!paiement) { alert('Sélectionnez un mode de règlement.'); return; }
+
+  const modal   = document.getElementById('modal-facture-paiement');
+  const ids     = JSON.parse(modal.dataset.ids || '[]');
+  const pId     = modal.dataset.pId;
+
+  // Appliquer le mode de paiement aux séances concernées
+  ids.forEach(id => {
+    const s = DB.seances.find(s => s.id === id);
+    if (s && !s.paiement) s.paiement = paiement;
+  });
+
+  modal.classList.add('hidden');
+  _doGenererFacture(pId, ids);
+}
+
+function _doGenererFacture(pId, ids) {
+  const seances = ids.map(id => DB.seances.find(s => s.id === id)).filter(Boolean);
   const total   = seances.reduce((a, s) => a + s.tarif, 0);
 
   // Numérotation ANNEE-MM-JJ-XX (date de la première séance)
@@ -1584,7 +1632,12 @@ function genererFacture() {
   };
 
   DB.factures.push(f);
-  ids.forEach(id => { const s = DB.seances.find(s => s.id === id); if (s) { s.facture = f.id; s.statut = 'réglée'; } });
+  // Marquer les séances comme "facturée" (statut distinct)
+  ids.forEach(id => {
+    const s = DB.seances.find(s => s.id === id);
+    if (s) { s.facture = f.id; s.statut = 'facturé'; }
+  });
+
   dbSave(); closeModal('modal-facture'); renderFactures();
   toast(`Facture ${num} générée ✓`, 'success');
   setTimeout(() => viewFacture(f.id), 300);
@@ -1600,10 +1653,10 @@ function buildInvoice(f) {
   const tva     = isTVA ? f.total - f.total / 1.20 : 0;
   const adr     = [CFG.adresse, CFG.cp && CFG.ville ? `${CFG.cp} ${CFG.ville}` : ''].filter(Boolean).join('<br>');
 
-  // Infos de règlement (dédupliquées)
-  const toutesReglees = seances.every(s => s.statut === 'réglée');
+  // Infos de règlement (dédupliquées) — statut réglée ou facturé
+  const toutesReglees = seances.every(s => s.statut === 'réglée' || s.statut === 'facturé');
   const regUniques    = [...new Map(
-    seances.filter(s => s.statut === 'réglée' && s.dateReglement)
+    seances.filter(s => (s.statut === 'réglée' || s.statut === 'facturé') && s.dateReglement)
            .map(s => [`${s.dateReglement}|${s.paiement || ''}`, { date: s.dateReglement, mode: s.paiement || '' }])
   ).values()];
 
@@ -1620,13 +1673,13 @@ function buildInvoice(f) {
     </div>
   </div>`;
 
-  // Modalités de règlement
-  const regModes = f.paiementsSeances?.length ? f.paiementsSeances.join(', ') : (CFG.paiements || '');
+  // Modalités de règlement : uniquement les modes réels, jamais le fallback CFG.paiements
+  const regModes = f.paiementsSeances?.length ? f.paiementsSeances.join(', ') : '';
   const regLine  = toutesReglees && regUniques.length
     ? (regUniques.length === 1
         ? `<span style="color:var(--sage-dark);font-weight:500;">✓ Réglé le ${formatDate(regUniques[0].date)}${regUniques[0].mode ? `, ${fmtMoney(f.total)} par ${regUniques[0].mode}` : ` — ${fmtMoney(f.total)}`}</span><br>`
         : regUniques.map(r => `<span style="color:var(--sage-dark);font-weight:500;">✓ Réglé le ${formatDate(r.date)}${r.mode ? ' par ' + r.mode : ''}</span>`).join('<br>') + '<br>')
-    : (regModes ? `Mode(s) de paiement : ${regModes}<br>` : '');
+    : (regModes ? `Mode de règlement : ${regModes}<br>` : '');
 
   const payBlock = `<div class="inv-payment-block">
     <strong>Modalités de règlement</strong><br>
