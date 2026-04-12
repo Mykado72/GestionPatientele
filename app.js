@@ -627,6 +627,10 @@ function getMatchScore(titre, p) {
   return 0;
 }
 
+function gcalSelectAll(checked) {
+  document.querySelectorAll('.gcal-cb:not(:disabled)').forEach(cb => cb.checked = checked);
+}
+
 function gcalConfirmImport() {
   const rows    = window._gcalRows || [];
   const checked = Array.from(document.querySelectorAll('.gcal-cb:checked:not(:disabled)')).map(cb => parseInt(cb.dataset.idx));
