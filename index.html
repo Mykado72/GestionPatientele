@@ -34,6 +34,17 @@
       </div>
     </div>
 
+    <div class="setup-section">Logo du cabinet (optionnel)</div>
+    <div class="form-group">
+      <div class="logo-upload-zone" onclick="document.getElementById('c-logo-input').click()">
+        <img id="c-logo-preview" src="" alt="" style="display:none;max-height:72px;max-width:200px;object-fit:contain;">
+        <span id="c-logo-placeholder">📷 Cliquer pour ajouter un logo (PNG, JPG — max 500 Ko)</span>
+      </div>
+      <input type="file" id="c-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('c')">
+      <button type="button" class="btn btn-secondary btn-sm" id="c-logo-remove" style="display:none;margin-top:.4rem;" onclick="removeLogo('c')">✕ Supprimer le logo</button>
+      <div class="form-hint">Apparaîtra en haut à gauche de vos factures.</div>
+    </div>
+
     <div class="setup-section">Identité professionnelle</div>
     <div class="form-row">
       <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="c-prenom" placeholder="Prénom"></div>
@@ -342,6 +353,23 @@
           </div>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="saveGcalClientId()">Enregistrer le Client ID</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Logo du cabinet</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+          <div class="logo-upload-zone" style="min-width:160px;flex-shrink:0;" onclick="document.getElementById('s-logo-input').click()">
+            <img id="s-logo-preview" src="" alt="" style="display:none;max-height:64px;max-width:160px;object-fit:contain;">
+            <span id="s-logo-placeholder">📷 Cliquer pour ajouter</span>
+          </div>
+          <input type="file" id="s-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('s')">
+          <div style="flex:1;">
+            <p style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:.5rem;">Affiché en haut à gauche des factures. PNG, JPG ou SVG, max 500 Ko.</p>
+            <button type="button" class="btn btn-secondary btn-sm" id="s-logo-remove" style="display:none;" onclick="removeLogo('s')">✕ Supprimer le logo</button>
+          </div>
+        </div>
       </div>
     </div>
 
