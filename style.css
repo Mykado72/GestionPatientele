@@ -224,7 +224,7 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 
 /* ── Suivi thérapeutique ── */
 .suivi-section-hint { font-size: 12px; color: var(--warm-mid); font-style: italic; margin-bottom: .75rem; line-height: 1.5; padding: .35rem .5rem; background: var(--sage-pale); border-radius: 4px; }
-.suivi-content      { white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+.suivi-content      { white-space: pre-wrap; max-height: 420px; overflow-y: auto; }
 .suivi-empty        { padding: .75rem 0; }
 .suivi-tabs-fiche   { border: 1px solid var(--beige-mid); border-radius: var(--radius); padding: 1rem; background: var(--white); margin-bottom: 1.25rem; }
 

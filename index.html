@@ -212,6 +212,7 @@
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('filter-date').value='';renderSeances();" title="Effacer le filtre date">✕</button>
       </div>
     </div>
+    <div id="gcal-expiry-banner" style="display:none;margin-bottom:.75rem;"></div>
     <div id="seances-list"></div>
     <div id="indispo-regles-summary"></div>
   </div>
@@ -348,6 +349,18 @@
       <button class="btn btn-danger btn-sm" onclick="resetApp()">Réinitialiser toutes les données</button>
       <button class="btn btn-primary" onclick="saveSettings()" style="padding:.65rem 2rem;">Enregistrer les modifications</button>
     </div>
+  </div>
+
+  <!-- ── FICHE PATIENT (pleine page) ── -->
+  <div class="page" id="page-patient-detail">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <button class="btn btn-secondary btn-sm" onclick="closeFichePatient()">← Retour</button>
+        <h1 class="page-title" style="margin:0;" id="fiche-page-title">Fiche patient</h1>
+      </div>
+      <div id="fiche-page-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;"></div>
+    </div>
+    <div id="fiche-content" style="max-width:860px;"></div>
   </div>
 
 </main>
@@ -557,14 +570,6 @@
       <button class="btn btn-secondary" onclick="closeModal('modal-seance')">Annuler</button>
       <button class="btn btn-primary" onclick="saveSeance()">Enregistrer</button>
     </div>
-  </div>
-</div>
-
-<!-- ── Modal Fiche Patient ── -->
-<div class="modal-overlay hidden" id="modal-fiche">
-  <div class="modal" style="max-width:600px;">
-    <button class="modal-close" onclick="closeModal('modal-fiche')">✕</button>
-    <div id="fiche-content"></div>
   </div>
 </div>
 

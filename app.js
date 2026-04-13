@@ -334,9 +334,12 @@ function gcalClearToken()  { sessionStorage.removeItem('psy-gcal-token'); sessio
   sessionStorage.setItem('psy-gcal-exp', Date.now() + exp * 1000);
   sessionStorage.removeItem('psy-gcal-state');
   history.replaceState(null, '', location.pathname);
-  // Ouvrir directement le panneau d'import après connexion
+  // Naviguer vers Séances et ouvrir le panneau d'import
   setTimeout(() => {
-    if (isConfigured()) openGcalImportPanel();
+    if (!isConfigured()) return;
+    const navBtns = document.querySelectorAll('.nav-btn');
+    showPage('seances', navBtns[2]);
+    openGcalImportPanel();
   }, 300);
 })();
 
@@ -373,15 +376,16 @@ function saveGcalClientId() {
 
 function renderGcalStatus() {
   const box = document.getElementById('gcal-status-box'); if (!box) return;
-  const tok    = gcalToken();
-  const exp    = parseInt(sessionStorage.getItem('psy-gcal-exp') || '0');
-  const alive  = tok && Date.now() < exp;
-  const hasId  = !!CFG.gcalClientId;
+  const tok   = gcalToken();
+  const exp   = parseInt(sessionStorage.getItem('psy-gcal-exp') || '0');
+  const alive = tok && Date.now() < exp;
+  const hasId = !!CFG.gcalClientId;
 
   if (alive) {
     const mins = Math.round((exp - Date.now()) / 60000);
     box.innerHTML = `<div class="info-box sage">
-      <strong>✓ Connecté à Google Agenda</strong> — session valide encore ~${mins} min<br>
+      <strong>✓ Connecté à Google Agenda</strong>
+      — session valide encore <span id="gcal-countdown">~${mins} min</span><br>
       <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;">
         <button class="btn btn-primary btn-sm" onclick="openGcalImportPanel()">📥 Importer des séances</button>
         <button class="btn btn-secondary btn-sm" onclick="gcalDisconnect()">Déconnecter</button>
@@ -397,6 +401,46 @@ function renderGcalStatus() {
       Importez vos rendez-vous Google Agenda comme séances. Renseignez d'abord votre Client ID OAuth ci-dessous.</p>`;
   }
 }
+
+// Bannière discrète dans la page Séances si le token expire bientôt ou est expiré
+function renderGcalExpiryBanner() {
+  const banner = document.getElementById('gcal-expiry-banner'); if (!banner) return;
+  const tok    = gcalToken();
+  const exp    = parseInt(sessionStorage.getItem('psy-gcal-exp') || '0');
+  const hasId  = !!CFG.gcalClientId;
+  if (!hasId) { banner.style.display = 'none'; return; }
+
+  const remaining = exp - Date.now();
+  if (!tok || remaining <= 0) {
+    banner.style.display = '';
+    banner.innerHTML = `<div class="info-box terra" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;padding:.5rem .85rem;font-size:13px;">
+      <span>📅 Session Google Agenda expirée.</span>
+      <button class="btn btn-primary btn-sm" onclick="gcalConnect()">Reconnecter</button>
+    </div>`;
+  } else if (remaining < 10 * 60 * 1000) { // < 10 min
+    const mins = Math.ceil(remaining / 60000);
+    banner.style.display = '';
+    banner.innerHTML = `<div class="info-box sage" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;padding:.5rem .85rem;font-size:13px;">
+      <span>📅 Session Google Agenda : expire dans ${mins} min.</span>
+      <button class="btn btn-primary btn-sm" onclick="gcalConnect()">Renouveler</button>
+    </div>`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// Décompte live affiché dans les paramètres (toutes les 30 s)
+setInterval(() => {
+  const el  = document.getElementById('gcal-countdown'); if (!el) return;
+  const exp = parseInt(sessionStorage.getItem('psy-gcal-exp') || '0');
+  const rem = exp - Date.now();
+  if (rem <= 0) {
+    renderGcalStatus();    // rafraîchit tout le bloc si expiré
+    renderGcalExpiryBanner();
+  } else {
+    el.textContent = `~${Math.round(rem / 60000)} min`;
+  }
+}, 30000);
 
 async function gcalFetch(path) {
   const tok = gcalToken();
@@ -704,16 +748,37 @@ function gcalConfirmImport() {
 // NAVIGATION
 // ════════════════════════════════════════════════════════
 
+// Mémorise la page précédente pour le retour depuis la fiche patient
+let _ficheReturnPage = 'patients';
+
 function showPage(id, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  btn.classList.add('active');
-  if (id === 'dashboard')  renderDashboard();
-  if (id === 'patients')   renderPatients();
-  if (id === 'seances')    { populateFilterPat(); renderSeances(); }
-  if (id === 'factures')   renderFactures();
-  if (id === 'parametres') loadSettingsForm();
+  if (btn) btn.classList.add('active');
+  if (id === 'dashboard')       renderDashboard();
+  if (id === 'patients')        renderPatients();
+  if (id === 'seances')         { populateFilterPat(); renderSeances(); renderGcalExpiryBanner(); }
+  if (id === 'factures')        renderFactures();
+  if (id === 'parametres')      loadSettingsForm();
+  if (id === 'patient-detail')  { /* contenu déjà injecté par viewPatient */ }
+}
+
+function showPatientPage(returnPage = 'patients') {
+  _ficheReturnPage = returnPage;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-patient-detail').classList.add('active');
+  // Activer le bouton nav Patients visuellement
+  document.querySelectorAll('.nav-btn')[1]?.classList.add('active');
+}
+
+function closeFichePatient() {
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const pages   = { patients: 1, seances: 2, dashboard: 0 };
+  const idx     = pages[_ficheReturnPage] ?? 1;
+  showPage(_ficheReturnPage, navBtns[idx]);
+  window.scrollTo(0, 0);
 }
 
 function openModal(id) {
@@ -801,15 +866,21 @@ function editPatient(id) {
 function deletePatient(id) {
   if (!confirm('Supprimer ce patient ? Ses séances resteront enregistrées.')) return;
   DB.patients = DB.patients.filter(p => p.id !== id);
-  dbSave(); closeModal('modal-fiche'); renderPatients();
+  dbSave(); closeFichePatient(); renderPatients();
   toast('Patient supprimé');
 }
 
-function viewPatient(id) {
+function viewPatient(id, returnPage) {
   const p       = DB.patients.find(p => p.id === id); if (!p) return;
   const seances = DB.seances.filter(s => s.patientId === id).sort((a, b) => b.date.localeCompare(a.date));
   const ini     = (p.prenom[0] + p.nom[0]).toUpperCase();
   const age     = p.naissance ? Math.floor((Date.now() - new Date(p.naissance)) / 31557600000) + ' ans' : '';
+
+  // Mettre à jour le titre et les actions en haut
+  document.getElementById('fiche-page-title').textContent = `${p.prenom} ${p.nom.toUpperCase()}`;
+  document.getElementById('fiche-page-actions').innerHTML = `
+    <button class="btn btn-secondary btn-sm" onclick="editPatientFromFiche('${id}')">✎ Modifier</button>
+    <button class="btn btn-danger btn-sm" onclick="deletePatient('${id}')">Supprimer</button>`;
 
   const seancesHTML = !seances.length
     ? '<div style="color:var(--warm-mid);font-size:13px;padding:.5rem 0;">Aucune séance enregistrée</div>'
@@ -832,10 +903,6 @@ function viewPatient(id) {
         <div style="font-family:var(--font-serif);font-size:22px;">${p.prenom} ${p.nom.toUpperCase()}</div>
         <div style="font-size:12px;color:var(--warm-mid);margin-top:2px;">${age}${p.motif ? ' · ' + p.motif : ''}</div>
       </div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="editPatientFromFiche('${id}')">✎ Modifier</button>
-        <button class="btn btn-danger btn-sm" onclick="deletePatient('${id}')">Supprimer</button>
-      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem;font-size:13px;">
       ${p.tel     ? `<div><span style="color:var(--warm-mid);">Tél :</span> ${p.tel}</div>` : ''}
@@ -855,13 +922,13 @@ function viewPatient(id) {
         <button class="tab-btn" onclick="showFicheTab('fiche-tab-supervision',this)">Supervision</button>
       </div>
       <div id="fiche-tab-historique">
-        ${ficheTab(p, 'historique', 'Historique', 'Antécédents, contexte de vie, histoire personnelle…')}
+        ${ficheTab(p, 'historique', 'Historique', '')}
       </div>
       <div id="fiche-tab-diagat" style="display:none;">
-        ${ficheTab(p, 'diagnosticAT', 'Diagnostic AT', 'États du moi, jeux, scénarios, injonctions…')}
+        ${ficheTab(p, 'diagnosticAT', 'Diagnostic AT', '')}
       </div>
       <div id="fiche-tab-supervision" style="display:none;">
-        ${ficheTab(p, 'supervision', 'Supervision', 'Points à superviser, hypothèses, contre-transfert…')}
+        ${ficheTab(p, 'supervision', 'Supervision', '')}
       </div>
     </div>
 
@@ -872,7 +939,9 @@ function viewPatient(id) {
     </div>
     <div id="fiche-seances-list">${seancesHTML}</div>`;
 
-  document.getElementById('modal-fiche').classList.remove('hidden');
+  showPatientPage(returnPage || _ficheReturnPage || 'patients');
+  window.scrollTo(0, 0);
+}
 }
 
 // Échappe le HTML pour l'affichage sécurisé dans les notes-blocks
@@ -963,17 +1032,17 @@ function saveSuiviSeance() {
   document.getElementById('modal-suivi-seance').classList.add('hidden');
   toast('Notes de suivi enregistrées ✓', 'success');
 
-  // Rafraîchir la fiche si elle est ouverte
+  // Rafraîchir la fiche si elle est affichée
   const returnTo = document.getElementById('s-return-patient').value;
-  if (returnTo === patientId && document.getElementById('modal-fiche').classList.contains('hidden') === false) {
+  if (returnTo === patientId && document.getElementById('page-patient-detail').classList.contains('active')) {
     viewPatient(patientId);
   }
 }
 
-function editPatientFromFiche(id) { closeModal('modal-fiche'); editPatient(id); }
+function editPatientFromFiche(id) { editPatient(id); }
 
 function addSeanceForPatient(patientId) {
-  closeModal('modal-fiche'); openModal('modal-seance');
+  openModal('modal-seance');
   setTimeout(() => {
     document.getElementById('s-patient').value = patientId;
     const p = DB.patients.find(p => p.id === patientId);
@@ -1211,7 +1280,7 @@ function saveSeance() {
   }
 
   dbSave(); closeModal('modal-seance');
-  if (returnTo) viewPatient(returnTo); else { renderSeances(); renderDashboard(); }
+  if (returnTo) viewPatient(returnTo, _ficheReturnPage); else { renderSeances(); renderDashboard(); }
   toast('Séance(s) enregistrée(s) ✓', 'success');
 }
 
@@ -1239,7 +1308,8 @@ function deleteSeance(id) {
   const returnTo = document.getElementById('s-return-patient').value;
   DB.seances = DB.seances.filter(s => s.id !== id);
   dbSave(); closeModal('modal-seance-view');
-  if (returnTo) refreshFicheSeances(returnTo); else { renderSeances(); renderDashboard(); }
+  if (returnTo) { refreshFicheSeances(returnTo); renderDashboard(); }
+  else { renderSeances(); renderDashboard(); }
   toast('Séance supprimée');
 }
 
