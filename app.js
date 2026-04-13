@@ -4,8 +4,11 @@
 
 'use strict';
 
+
 // ════════════════════════════════════════════════════════
 // DONNÉES & PERSISTANCE
+// DB  → IndexedDB  (aucune limite pratique de taille)
+// CFG → localStorage (léger, chargé en sync au démarrage)
 // ════════════════════════════════════════════════════════
 
 let DB = {
@@ -24,18 +27,118 @@ let CFG = {
   tarif: 60, delai: 30,
   iban: '', bic: '', banque: '',
   paiements: 'Espèces, chèque, virement bancaire',
-  logo: ''  // base64 du logo cabinet (affiché sur les factures)
+  logo: '',            // base64 du logo (factures)
+  gcalClientId:   '',
+  gcalCalendarId: ''
 };
 
-function dbLoad() {
-  try { const d = localStorage.getItem('psy-db');  if (d) DB  = JSON.parse(d); } catch (e) {}
-  try { const c = localStorage.getItem('psy-cfg'); if (c) CFG = { ...CFG, ...JSON.parse(c) }; } catch (e) {}
+// ── IndexedDB ──────────────────────────────────────────
+const IDB_NAME    = 'psy-cabinet';
+const IDB_VERSION = 1;
+const IDB_STORE   = 'data';
+const IDB_KEY     = 'db';
+
+let _idb = null; // connexion ouverte une fois au démarrage
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    if (_idb) { resolve(_idb); return; }
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function idbGet(key) {
+  return idbOpen().then(db => new Promise((resolve, reject) => {
+    const req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(key);
+    req.onsuccess = e => resolve(e.target.result ?? null);
+    req.onerror   = e => reject(e.target.error);
+  }));
+}
+
+function idbPut(key, value) {
+  return idbOpen().then(db => new Promise((resolve, reject) => {
+    const req = db.transaction(IDB_STORE, 'readwrite').objectStore(IDB_STORE).put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  }));
+}
+
+function idbDelete(key) {
+  return idbOpen().then(db => new Promise((resolve, reject) => {
+    const req = db.transaction(IDB_STORE, 'readwrite').objectStore(IDB_STORE).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  }));
+}
+
+// ── Chargement initial (async, attendu avant tout rendu) ──
+async function dbLoad() {
+  // CFG : toujours localStorage (synchrone, petit)
+  try {
+    const c = localStorage.getItem('psy-cfg');
+    if (c) CFG = { ...CFG, ...JSON.parse(c) };
+  } catch (e) {}
+
+  // DB : IndexedDB avec migration automatique depuis localStorage
+  try {
+    const stored = await idbGet(IDB_KEY);
+    if (stored) {
+      DB = stored;
+    } else {
+      // Migration one-shot : ancien psy-db localStorage → IndexedDB
+      const legacy = localStorage.getItem('psy-db');
+      if (legacy) {
+        try {
+          DB = JSON.parse(legacy);
+          await idbPut(IDB_KEY, DB);
+          localStorage.removeItem('psy-db');
+          console.info('[Cabinet] Migration localStorage → IndexedDB OK.');
+        } catch (e) { console.warn('[Cabinet] Migration échouée.', e); }
+      }
+    }
+  } catch (e) {
+    // Fallback localStorage si IDB indisponible (navigation privée Firefox, etc.)
+    console.warn('[Cabinet] IndexedDB indisponible, fallback localStorage.', e);
+    try {
+      const d = localStorage.getItem('psy-db');
+      if (d) DB = JSON.parse(d);
+    } catch (e2) {}
+  }
+
+  // Garanties de structure (rétro-compatibilité)
   if (!DB.indisponibilites)        DB.indisponibilites        = [];
   if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
+  if (!DB.factures)                DB.factures                = [];
+  if (!DB.patients)                DB.patients                = [];
+  if (!DB.seances)                 DB.seances                 = [];
+  if (!DB.nextNum)                 DB.nextNum                 = 1;
 }
-function dbSave()  { try { localStorage.setItem('psy-db',  JSON.stringify(DB));  } catch (e) {} }
-function cfgSave() { try { localStorage.setItem('psy-cfg', JSON.stringify(CFG)); } catch (e) {} }
-function uid()     { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+// ── Sauvegarde DB (async) ──────────────────────────────
+async function dbSave() {
+  try {
+    await idbPut(IDB_KEY, DB);
+  } catch (e) {
+    // Fallback localStorage si IDB échoue
+    console.warn('[Cabinet] dbSave IDB échoué, fallback localStorage.', e);
+    try { localStorage.setItem('psy-db', JSON.stringify(DB)); } catch (e2) {}
+  }
+}
+
+// ── Sauvegarde CFG (sync) ──────────────────────────────
+function cfgSave() {
+  try { localStorage.setItem('psy-cfg', JSON.stringify(CFG)); } catch (e) {}
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 
 // ════════════════════════════════════════════════════════
@@ -174,7 +277,7 @@ function saveSettings() {
   CFG = { ...CFG, ...collectCfg('s') };   // préserve CFG.logo
   const nn = parseInt(document.getElementById('s-next-num').value);
   if (nn > 0) DB.nextNum = nn;
-  cfgSave(); dbSave();
+  cfgSave(); void dbSave();
   updateHeader();
   toast('Paramètres enregistrés ✓', 'success');
 }
@@ -239,9 +342,10 @@ function updateHeader() {
   document.title = `Cabinet ${CFG.prenom} ${CFG.nom}`;
 }
 
-function resetApp() {
+async function resetApp() {
   if (!confirm('Supprimer TOUTES les données ? Action irréversible.')) return;
-  localStorage.removeItem('psy-db');
+  try { await idbDelete(IDB_KEY); } catch (e) {}
+  localStorage.removeItem('psy-db');   // au cas où le fallback était actif
   localStorage.removeItem('psy-cfg');
   location.reload();
 }
@@ -272,7 +376,7 @@ function importData() {
         if (!data.db || !data.cfg) throw new Error('Format invalide');
         if (!confirm('Remplacer toutes les données actuelles ?')) return;
         DB = data.db; CFG = { ...CFG, ...data.cfg };
-        dbSave(); cfgSave(); updateHeader(); renderDashboard();
+        void dbSave(); cfgSave(); updateHeader(); renderDashboard();
         refreshLogoPreview('s');
         toast('Import réussi ✓', 'success');
       } catch (err) { alert('Fichier invalide : ' + err.message); }
@@ -296,7 +400,7 @@ function importDataFromSetup() {
         CFG = { ...CFG, ...data.cfg };
         if (!DB.indisponibilites)        DB.indisponibilites        = [];
         if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
-        dbSave(); cfgSave();
+        void dbSave(); cfgSave();
         // Basculer directement dans l'application
         document.getElementById('setup-screen').classList.add('hidden');
         updateHeader();
@@ -733,7 +837,7 @@ function gcalConfirmImport() {
     imported++;
   });
 
-  dbSave();
+  void dbSave();
   document.getElementById('modal-gcal-import').classList.add('hidden');
   renderSeances(); renderDashboard();
 
@@ -850,7 +954,7 @@ function savePatient() {
     data.id = uid(); data.createdAt = new Date().toISOString();
     DB.patients.push(data);
   }
-  dbSave(); closeModal('modal-patient'); renderPatients();
+  void dbSave(); closeModal('modal-patient'); renderPatients();
   toast('Patient enregistré ✓', 'success');
 }
 
@@ -866,7 +970,7 @@ function editPatient(id) {
 function deletePatient(id) {
   if (!confirm('Supprimer ce patient ? Ses séances resteront enregistrées.')) return;
   DB.patients = DB.patients.filter(p => p.id !== id);
-  dbSave(); closeFichePatient(); renderPatients();
+  void dbSave(); closeFichePatient(); renderPatients();
   toast('Patient supprimé');
 }
 
@@ -941,6 +1045,7 @@ function viewPatient(id, returnPage) {
 
   showPatientPage(returnPage || _ficheReturnPage || 'patients');
   window.scrollTo(0, 0);
+}
 }
 
 // Échappe le HTML pour l'affichage sécurisé dans les notes-blocks
@@ -1027,7 +1132,7 @@ function saveSuiviSeance() {
 
   if (!changed) { toast('Aucune note à enregistrer.'); return; }
 
-  dbSave();
+  void dbSave();
   document.getElementById('modal-suivi-seance').classList.add('hidden');
   toast('Notes de suivi enregistrées ✓', 'success');
 
@@ -1278,7 +1383,7 @@ function saveSeance() {
     base.id = uid(); base.facture = null; DB.seances.push(base);
   }
 
-  dbSave(); closeModal('modal-seance');
+  void dbSave(); closeModal('modal-seance');
   if (returnTo) viewPatient(returnTo, _ficheReturnPage); else { renderSeances(); renderDashboard(); }
   toast('Séance(s) enregistrée(s) ✓', 'success');
 }
@@ -1306,7 +1411,7 @@ function deleteSeance(id) {
   if (!confirm('Supprimer cette séance ?')) return;
   const returnTo = document.getElementById('s-return-patient').value;
   DB.seances = DB.seances.filter(s => s.id !== id);
-  dbSave(); closeModal('modal-seance-view');
+  void dbSave(); closeModal('modal-seance-view');
   if (returnTo) { refreshFicheSeances(returnTo); renderDashboard(); }
   else { renderSeances(); renderDashboard(); }
   toast('Séance supprimée');
@@ -1315,7 +1420,7 @@ function deleteSeance(id) {
 function marquerStatut(id, statut) {
   const s = DB.seances.find(s => s.id === id); if (!s) return;
   if (statut === 'réglée') { openModalReglement(id); return; }
-  s.statut = statut; dbSave();
+  s.statut = statut; void dbSave();
   const returnTo = document.getElementById('s-return-patient').value;
   closeModal('modal-seance-view');
   if (returnTo) { refreshFicheSeances(returnTo); viewSeanceFromFiche(id, returnTo); }
@@ -1339,7 +1444,7 @@ function confirmerReglement() {
   s.statut        = 'réglée';
   s.dateReglement = dateReg;
   s.paiement      = document.getElementById('reg-paiement').value;
-  dbSave();
+  void dbSave();
   document.getElementById('modal-reglement').classList.add('hidden');
   const returnTo = document.getElementById('s-return-patient').value;
   closeModal('modal-seance-view');
@@ -1539,7 +1644,7 @@ function saveIndispo() {
     toast('Indisponibilité enregistrée ✓', 'success');
   }
 
-  dbSave();
+  void dbSave();
   document.getElementById('modal-indispo').classList.add('hidden');
   renderSeances(); renderCalendar();
 }
@@ -1547,14 +1652,14 @@ function saveIndispo() {
 function deleteIndispo(id) {
   if (!confirm('Supprimer cette indisponibilité ?')) return;
   DB.indisponibilites = DB.indisponibilites.filter(i => i.id !== id);
-  dbSave(); renderSeances(); renderCalendar();
+  void dbSave(); renderSeances(); renderCalendar();
   toast('Indisponibilité supprimée');
 }
 
 function deleteIndispoRegle(id) {
   if (!confirm('Supprimer cette règle récurrente ?')) return;
   DB.indisponibilites_regles = DB.indisponibilites_regles.filter(r => r.id !== id);
-  dbSave(); renderSeances(); renderCalendar();
+  void dbSave(); renderSeances(); renderCalendar();
   toast('Règle supprimée');
 }
 
@@ -1711,7 +1816,7 @@ function _doGenererFacture(pId, ids) {
     if (s) { s.facture = f.id; s.statut = 'facturé'; }
   });
 
-  dbSave(); closeModal('modal-facture'); renderFactures();
+  void dbSave(); closeModal('modal-facture'); renderFactures();
   toast(`Facture ${num} générée ✓`, 'success');
   setTimeout(() => viewFacture(f.id), 300);
 }
@@ -2155,17 +2260,20 @@ function renderUpcoming() {
 // INITIALISATION
 // ════════════════════════════════════════════════════════
 
-dbLoad();
-
-if (isConfigured()) {
-  document.getElementById('setup-screen').classList.add('hidden');
-  updateHeader();
-  refreshLogoPreview('s');
-  renderDashboard();
-} else {
-  document.getElementById('setup-screen').classList.remove('hidden');
-}
-
-// Manifest PWA
+// Manifest PWA (généré dynamiquement pour compatibilité GitHub Pages)
 const _manifest = { name: 'Cabinet Psychothérapie', short_name: 'Cabinet Psy', start_url: '.', display: 'standalone', background_color: '#f7f3ee', theme_color: '#6b8f71' };
 document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(_manifest)], { type: 'application/manifest+json' })));
+
+// dbLoad est async (IndexedDB) — on attend qu'elle soit terminée avant tout rendu
+(async () => {
+  await dbLoad();
+
+  if (isConfigured()) {
+    document.getElementById('setup-screen').classList.add('hidden');
+    updateHeader();
+    refreshLogoPreview('s');
+    renderDashboard();
+  } else {
+    document.getElementById('setup-screen').classList.remove('hidden');
+  }
+})();
