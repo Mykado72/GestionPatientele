@@ -1876,7 +1876,7 @@ function buildInvoice(f) {
 
   // Logo limité à 64px de hauteur pour ne pas envahir l'en-tête
   const logoHtml = CFG.logo
-    ? `<img src="${CFG.logo}" alt="Logo" style="max-height:64px;max-width:150px;object-fit:contain;flex-shrink:0;">`
+    ? `<img src="${CFG.logo}" alt="Logo" style="max-height:128px;max-width:300px;object-fit:contain;flex-shrink:0;">`
     : '';
 
   return `<div class="invoice-preview" id="printable-invoice">
