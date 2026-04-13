@@ -1046,7 +1046,6 @@ function viewPatient(id, returnPage) {
   showPatientPage(returnPage || _ficheReturnPage || 'patients');
   window.scrollTo(0, 0);
 }
-}
 
 // Échappe le HTML pour l'affichage sécurisé dans les notes-blocks
 function escHtml(str) {
