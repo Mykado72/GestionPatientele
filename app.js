@@ -195,7 +195,7 @@ function toast(msg, type = '') {
 function handleLogoUpload(pfx) {
   const file = document.getElementById(`${pfx}-logo-input`).files[0];
   if (!file) return;
-  if (file.size > 500 * 1024) { alert('Logo trop volumineux (max 500 Ko).'); return; }
+  if (file.size > 1000 * 1024) { alert('Logo trop volumineux (max 1000 Ko).'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     CFG.logo = e.target.result;
