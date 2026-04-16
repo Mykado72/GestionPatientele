@@ -128,6 +128,7 @@
     <div class="name" id="hdr-name">Cabinet de Psychothérapie</div>
     <div class="subtitle" id="hdr-sub">Gestion du cabinet</div>
   </div>
+  <div id="hdr-drive-badge" style="margin-left:auto;font-size:11px;color:var(--warm-mid);display:none;align-items:center;gap:.3rem;"></div>
 </header>
 
 <nav>
@@ -335,6 +336,16 @@
           <div class="form-group"><label>Banque</label><input type="text" id="s-banque"></div>
           <div class="form-group"><label>Modes de paiement acceptés</label><input type="text" id="s-paiements"></div>
         </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Sauvegarde Google Drive</div>
+      <div class="card">
+        <p style="font-size:13px;color:var(--warm-mid);margin-bottom:.75rem;line-height:1.6;">
+          Sauvegarde automatique de toutes vos données dans un fichier <strong>cabinet-psychotherapie-backup.json</strong> sur votre Google Drive. L'application n'accède qu'aux fichiers qu'elle a elle-même créés (<code>drive.file</code>).
+        </p>
+        <div id="gdrive-status-box"></div>
       </div>
     </div>
 

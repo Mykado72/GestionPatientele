@@ -127,10 +127,11 @@ async function dbSave() {
   try {
     await idbPut(IDB_KEY, DB);
   } catch (e) {
-    // Fallback localStorage si IDB échoue
     console.warn('[Cabinet] dbSave IDB échoué, fallback localStorage.', e);
     try { localStorage.setItem('psy-db', JSON.stringify(DB)); } catch (e2) {}
   }
+  // Planifier une sauvegarde Drive si connecté (debounce 30s)
+  scheduleDriveSave();
 }
 
 // ── Sauvegarde CFG (sync) ──────────────────────────────
@@ -195,7 +196,7 @@ function toast(msg, type = '') {
 function handleLogoUpload(pfx) {
   const file = document.getElementById(`${pfx}-logo-input`).files[0];
   if (!file) return;
-  if (file.size > 1000 * 1024) { alert('Logo trop volumineux (max 1000 Ko).'); return; }
+  if (file.size > 500 * 1024) { alert('Logo trop volumineux (max 500 Ko).'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     CFG.logo = e.target.result;
@@ -310,6 +311,7 @@ function loadSettingsForm() {
   const hint = document.getElementById('gcal-origin-hint');
   if (hint) hint.textContent = location.origin;
   renderGcalStatus();
+  renderGdriveStatus();
 
   refreshLogoPreview('s');
 }
@@ -416,6 +418,245 @@ function importDataFromSetup() {
 
 
 // ════════════════════════════════════════════════════════
+// GOOGLE DRIVE — Sauvegarde automatique
+// Scope drive.file : l'app ne voit que ses propres fichiers
+// Token séparé de Google Agenda (même Client ID, scope différent)
+// ════════════════════════════════════════════════════════
+
+const GDRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.file';
+const GDRIVE_API        = 'https://www.googleapis.com/drive/v3';
+const GDRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
+const GDRIVE_FILENAME   = 'cabinet-psychotherapie-backup.json';
+
+// Token Drive en sessionStorage
+function gdriveToken()      { return sessionStorage.getItem('psy-gdrive-token'); }
+function gdriveSaveToken(t) { sessionStorage.setItem('psy-gdrive-token', t); }
+function gdriveClearToken() {
+  sessionStorage.removeItem('psy-gdrive-token');
+  sessionStorage.removeItem('psy-gdrive-exp');
+}
+function gdriveAlive() {
+  const tok = gdriveToken();
+  const exp = parseInt(sessionStorage.getItem('psy-gdrive-exp') || '0');
+  return !!(tok && Date.now() < exp);
+}
+
+// Connexion OAuth Drive
+function gdriveConnect() {
+  const clientId = CFG.gcalClientId;
+  if (!clientId) {
+    alert('Configurez d\'abord votre Client ID Google dans les paramètres (section Google Agenda).');
+    return;
+  }
+  const state = 'gdrive-' + Date.now();
+  sessionStorage.setItem('psy-gdrive-state', state);
+  const params = new URLSearchParams({
+    client_id:     clientId,
+    redirect_uri:  location.origin + location.pathname,
+    response_type: 'token',
+    scope:         GDRIVE_SCOPE,
+    state,
+    prompt:        'select_account'
+  });
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+}
+
+function gdriveDisconnect() {
+  gdriveClearToken();
+  CFG.gdriveFileId = '';
+  cfgSave();
+  renderGdriveStatus();
+  toast('Déconnecté de Google Drive');
+}
+
+// Requête Drive authentifiée
+async function gdriveFetch(path, options = {}) {
+  const tok = gdriveToken();
+  if (!tok) throw new Error('Non connecté à Google Drive');
+  const res = await fetch((options._upload ? GDRIVE_UPLOAD_API : GDRIVE_API) + path, {
+    ...options,
+    headers: { Authorization: 'Bearer ' + tok, ...(options.headers || {}) }
+  });
+  if (res.status === 401) { gdriveClearToken(); renderGdriveStatus(); throw new Error('Session Drive expirée, reconnectez-vous.'); }
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || 'Erreur Drive ' + res.status); }
+  return res.status === 204 ? null : res.json();
+}
+
+// ── Sauvegarde vers Drive ──────────────────────────────
+let _driveSaveTimer  = null;   // debounce handle
+let _driveLastSaved  = 0;      // timestamp de la dernière sauvegarde réussie
+let _driveSaving     = false;
+
+// Planifie une sauvegarde Drive dans 30s (debounced)
+function scheduleDriveSave() {
+  if (!gdriveAlive()) return;
+  clearTimeout(_driveSaveTimer);
+  _driveSaveTimer = setTimeout(() => { void driveBackupNow(); }, 30_000);
+}
+
+// Sauvegarde immédiate
+async function driveBackupNow() {
+  if (!gdriveAlive()) { renderGdriveStatus(); return; }
+  if (_driveSaving)   return;  // déjà en cours
+  _driveSaving = true;
+  renderGdriveStatus();
+
+  try {
+    const payload = JSON.stringify({ db: DB, cfg: CFG, exportedAt: new Date().toISOString(), version: '1.0' }, null, 2);
+    const blob    = new Blob([payload], { type: 'application/json' });
+
+    if (CFG.gdriveFileId) {
+      // Mise à jour du fichier existant (PATCH multipart)
+      await _driveUpload('PATCH', '/' + CFG.gdriveFileId, blob);
+    } else {
+      // Création du fichier + récupération de son ID
+      const meta = JSON.stringify({ name: GDRIVE_FILENAME, mimeType: 'application/json' });
+      const res  = await _driveUpload('POST', '', blob, meta);
+      if (res?.id) { CFG.gdriveFileId = res.id; cfgSave(); }
+    }
+
+    _driveLastSaved = Date.now();
+    toast('Sauvegarde Drive ✓', 'success');
+  } catch (e) {
+    toast('Drive : ' + e.message, 'danger');
+    console.warn('[Cabinet] Drive backup échoué', e);
+  } finally {
+    _driveSaving = false;
+    renderGdriveStatus();
+  }
+}
+
+// Upload multipart Drive (création ou mise à jour)
+async function _driveUpload(method, filePath, blob, metaJson = null) {
+  const boundary = 'cab' + Date.now();
+  const metaStr  = metaJson || JSON.stringify({ name: GDRIVE_FILENAME, mimeType: 'application/json' });
+  const bodyParts = [
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metaStr}\r\n`,
+    `--${boundary}\r\nContent-Type: application/json\r\n\r\n`,
+  ];
+  const text     = await blob.text();
+  const bodyEnd  = `\r\n--${boundary}--`;
+  const fullBody = bodyParts.join('') + text + bodyEnd;
+
+  const params   = new URLSearchParams({ uploadType: 'multipart' });
+  const endpoint = method === 'POST'
+    ? `/files?${params}&fields=id`
+    : `/files${filePath}?${params}`;
+
+  return gdriveFetch(endpoint, {
+    _upload: true,
+    method,
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body: fullBody
+  });
+}
+
+// Restauration depuis Drive
+async function driveRestore() {
+  if (!gdriveAlive()) { alert('Connectez-vous à Google Drive d\'abord.'); return; }
+  if (!confirm('Remplacer toutes les données locales par la sauvegarde Google Drive ?')) return;
+
+  try {
+    // Chercher le fichier par son ID mémorisé, ou le retrouver par nom
+    let fileId = CFG.gdriveFileId;
+    if (!fileId) {
+      const q   = encodeURIComponent(`name='${GDRIVE_FILENAME}' and trashed=false`);
+      const res = await gdriveFetch(`/files?q=${q}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime%20desc`);
+      fileId = res?.files?.[0]?.id;
+    }
+    if (!fileId) { alert('Aucune sauvegarde trouvée sur votre Drive.'); return; }
+
+    const res  = await fetch(`${GDRIVE_API}/files/${fileId}?alt=media`, {
+      headers: { Authorization: 'Bearer ' + gdriveToken() }
+    });
+    if (!res.ok) throw new Error('Lecture Drive échouée (' + res.status + ')');
+    const data = await res.json();
+    if (!data.db || !data.cfg) throw new Error('Format de sauvegarde invalide');
+
+    DB  = data.db;
+    CFG = { ...CFG, ...data.cfg };
+    if (!DB.indisponibilites)        DB.indisponibilites        = [];
+    if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
+    void dbSave(); cfgSave();
+    updateHeader(); renderDashboard(); refreshLogoPreview('s');
+    toast('Restauration depuis Drive réussie ✓', 'success');
+  } catch (e) {
+    alert('Restauration échouée : ' + e.message);
+  }
+}
+
+// Statut Drive affiché dans les paramètres + badge header
+function renderGdriveStatus() {
+  const box   = document.getElementById('gdrive-status-box');
+  const badge = document.getElementById('hdr-drive-badge');
+  const alive = gdriveAlive();
+  const hasId = !!CFG.gcalClientId;
+
+  // Badge header
+  if (badge) {
+    if (_driveSaving) {
+      badge.style.display = 'flex';
+      badge.innerHTML = '⏳ Drive…';
+    } else if (alive && _driveLastSaved) {
+      badge.style.display = 'flex';
+      badge.innerHTML = `☁ ${_fmtSince(_driveLastSaved)}`;
+    } else if (alive) {
+      badge.style.display = 'flex';
+      badge.innerHTML = '☁ Drive connecté';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  if (!box) return;
+
+  if (_driveSaving) {
+    box.innerHTML = `<div class="info-box sage" style="font-size:13px;">
+      ⏳ Sauvegarde en cours…
+    </div>`;
+    return;
+  }
+  if (alive) {
+    const exp   = parseInt(sessionStorage.getItem('psy-gdrive-exp') || '0');
+    const mins  = Math.round((exp - Date.now()) / 60000);
+    const since = _driveLastSaved ? `— dernière sauvegarde : ${_fmtSince(_driveLastSaved)}` : '— pas encore sauvegardé cette session';
+    box.innerHTML = `<div class="info-box sage">
+      <strong>✓ Google Drive connecté</strong> ${since}<br>
+      <span style="font-size:12px;color:var(--sage-dark);">Session valide encore ~${mins} min · Sauvegarde auto 30s après chaque modification.</span>
+      <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="driveBackupNow()">💾 Sauvegarder maintenant</button>
+        <button class="btn btn-secondary btn-sm" onclick="driveRestore()">⬆ Restaurer depuis Drive</button>
+        <button class="btn btn-secondary btn-sm" onclick="gdriveDisconnect()">Déconnecter</button>
+      </div>
+    </div>`;
+  } else if (hasId) {
+    box.innerHTML = `<div class="info-box terra" style="margin-bottom:.5rem;font-size:13px;">
+      <strong>Non connecté</strong> — autorisez l'accès pour activer la sauvegarde automatique.
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="gdriveConnect()">🔗 Connecter Google Drive</button>`;
+  } else {
+    box.innerHTML = `<p style="font-size:13px;color:var(--warm-mid);line-height:1.6;">
+      Configurez d'abord votre Client ID Google (section Google Agenda ci-dessous).</p>`;
+  }
+}
+
+function _fmtSince(ts) {
+  const d = Math.round((Date.now() - ts) / 1000);
+  if (d < 60)  return 'il y a quelques secondes';
+  if (d < 3600) return `il y a ${Math.round(d / 60)} min`;
+  return `il y a ${Math.round(d / 3600)} h`;
+}
+
+// Décompte Drive toutes les 30s
+setInterval(() => {
+  if (!gdriveAlive() && sessionStorage.getItem('psy-gdrive-token')) {
+    gdriveClearToken();
+  }
+  renderGdriveStatus();   // rafraîchit badge header + bloc paramètres
+}, 30_000);
+
+
+// ════════════════════════════════════════════════════════
 // GOOGLE AGENDA — Import lecture seule
 // ════════════════════════════════════════════════════════
 
@@ -427,22 +668,40 @@ function gcalToken()       { return sessionStorage.getItem('psy-gcal-token'); }
 function gcalSaveToken(t)  { sessionStorage.setItem('psy-gcal-token', t); }
 function gcalClearToken()  { sessionStorage.removeItem('psy-gcal-token'); sessionStorage.removeItem('psy-gcal-exp'); }
 
-// Capture du token au retour OAuth (fragment #access_token=…)
+// Capture du token au retour OAuth — gère Calendar ET Drive
 ;(function catchOAuth() {
   if (!location.hash.includes('access_token')) return;
   const p   = new URLSearchParams(location.hash.slice(1));
   const tok = p.get('access_token'); if (!tok) return;
   const exp = parseInt(p.get('expires_in') || '3600');
-  if (sessionStorage.getItem('psy-gcal-state') && p.get('state') !== sessionStorage.getItem('psy-gcal-state')) return;
+  const st  = p.get('state') || '';
+  history.replaceState(null, '', location.pathname);
+
+  // ── Retour Drive ──
+  if (st.startsWith('gdrive-')) {
+    if (sessionStorage.getItem('psy-gdrive-state') && st !== sessionStorage.getItem('psy-gdrive-state')) return;
+    gdriveSaveToken(tok);
+    sessionStorage.setItem('psy-gdrive-exp', Date.now() + exp * 1000);
+    sessionStorage.removeItem('psy-gdrive-state');
+    setTimeout(() => {
+      if (!isConfigured()) return;
+      renderGdriveStatus();
+      showPage('parametres', document.querySelectorAll('.nav-btn')[4]);
+      toast('Google Drive connecté ✓ — sauvegarde automatique activée', 'success');
+      // Déclencher une première sauvegarde immédiate
+      void driveBackupNow();
+    }, 300);
+    return;
+  }
+
+  // ── Retour Calendar ──
+  if (sessionStorage.getItem('psy-gcal-state') && st !== sessionStorage.getItem('psy-gcal-state')) return;
   gcalSaveToken(tok);
   sessionStorage.setItem('psy-gcal-exp', Date.now() + exp * 1000);
   sessionStorage.removeItem('psy-gcal-state');
-  history.replaceState(null, '', location.pathname);
-  // Naviguer vers Séances et ouvrir le panneau d'import
   setTimeout(() => {
     if (!isConfigured()) return;
-    const navBtns = document.querySelectorAll('.nav-btn');
-    showPage('seances', navBtns[2]);
+    showPage('seances', document.querySelectorAll('.nav-btn')[2]);
     openGcalImportPanel();
   }, 300);
 })();
