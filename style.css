@@ -281,3 +281,37 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
   main { padding: 0; max-width: 100%; }
   .invoice-preview { border: none; box-shadow: none; }
 }
+
+
+/* ── Éditeur de texte enrichi ─────────────────────────── */
+.rich-editor-wrap { width:100%; }
+.rich-toolbar {
+  display:flex; align-items:center; gap:3px; flex-wrap:wrap;
+  padding:.35rem .45rem; border:1.5px solid var(--beige-mid); border-bottom:0;
+  border-radius:var(--radius-sm) var(--radius-sm) 0 0; background:var(--beige);
+}
+.rich-toolbar button {
+  min-width:28px; height:28px; padding:0 .4rem; border:1px solid transparent;
+  border-radius:5px; background:transparent; color:var(--warm-dark); cursor:pointer;
+  font-family:var(--font-sans); font-size:13px;
+}
+.rich-toolbar button:hover { background:var(--white); border-color:var(--beige-mid); }
+.rich-toolbar-sep { width:1px; height:20px; background:var(--beige-mid); margin:0 3px; }
+.rich-color-label { font-size:11px; color:var(--warm-mid); margin:0 2px 0 3px; }
+.rich-color { width:18px !important; min-width:18px !important; height:18px !important; padding:0 !important; border-radius:50% !important; border:2px solid var(--white) !important; box-shadow:0 0 0 1px var(--beige-mid); }
+.rich-color-dark { background:#3f3933 !important; }
+.rich-color-red { background:#b44b45 !important; }
+.rich-color-blue { background:#4169a1 !important; }
+.rich-color-green { background:#477b55 !important; }
+.rich-editor {
+  width:100%; min-height:80px; max-height:420px; overflow:auto;
+  padding:.65rem .85rem; border:1.5px solid var(--beige-mid); border-radius:0 0 var(--radius-sm) var(--radius-sm);
+  font-family:var(--font-sans); font-size:14px; line-height:1.6; color:var(--warm-dark);
+  background:var(--white); outline:none; transition:var(--t); white-space:pre-wrap;
+}
+.rich-editor:focus { border-color:var(--sage); box-shadow:0 0 0 3px rgba(107,143,113,.12); }
+.rich-editor:empty::before { content:attr(data-placeholder); color:var(--warm-mid); pointer-events:none; }
+.rich-editor ul, .rich-editor ol, .rich-content ul, .rich-content ol { padding-left:1.5rem; }
+.rich-content p, .rich-content div { margin:.15rem 0; }
+.rich-content .suivi-stamp { font-weight:500; color:var(--warm-mid); margin:.35rem 0 .15rem; }
+.rich-editor-value { display:none !important; }

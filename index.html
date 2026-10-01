@@ -28,7 +28,7 @@
     <!-- Reprise depuis un backup -->
     <div class="info-box sage" style="margin-bottom:1.5rem;">
       <strong>Vous utilisez déjà cette application sur un autre appareil ?</strong><br>
-      <span style="font-size:12px;">Importez votre fichier de sauvegarde pour récupérer toutes vos données (patients, séances, factures).</span>
+      <span style="font-size:12px;">Importez votre fichier de sauvegarde (JSON classique ou sauvegarde chiffrée) pour récupérer toutes vos données (patients, séances, factures).</span>
       <div style="margin-top:.6rem;">
         <button type="button" class="btn btn-primary btn-sm" onclick="importDataFromSetup()">⬆ Importer un fichier de sauvegarde</button>
       </div>
@@ -254,6 +254,7 @@
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="exportData()">⬇ Exporter les données</button>
           <button class="btn btn-secondary" onclick="importData()">⬆ Importer des données</button>
+          <button class="btn btn-secondary" onclick="exportEncryptedData()">🔐 Exporter chiffré</button>
         </div>
       </div>
     </div>
@@ -450,7 +451,27 @@
       <div class="form-group"><label>Motif de consultation</label><input type="text" id="p-motif" placeholder="Ex : anxiété, relations, deuil…"></div>
       <div class="form-group">
         <label>Notes générales</label>
-        <textarea id="p-notes" rows="3" placeholder="Observations générales…"></textarea>
+        <div class="rich-editor-wrap" data-rich-id="p-notes">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','removeFormat')">Tx</button>
+  </div>
+  <div id="p-notes-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Observations générales…"></div>
+  <textarea id="p-notes" class="rich-editor-value" rows="3" aria-hidden="true" tabindex="-1"></textarea>
+</div>
       </div>
       <div class="info-box terra" style="font-size:11px;">⚑ Toutes les données sont stockées uniquement sur cet appareil.</div>
     </div>
@@ -459,7 +480,27 @@
       <div class="suivi-section-hint">Antécédents, contexte de vie, histoire personnelle du patient.</div>
       <div class="form-group">
         <label>Historique</label>
-        <textarea id="p-historique" rows="12" placeholder="Antécédents médicaux, familiaux, événements marquants, contexte socio-professionnel…"></textarea>
+        <div class="rich-editor-wrap" data-rich-id="p-historique">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','removeFormat')">Tx</button>
+  </div>
+  <div id="p-historique-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Antécédents médicaux, familiaux, événements marquants, contexte socio-professionnel…"></div>
+  <textarea id="p-historique" class="rich-editor-value" rows="12" aria-hidden="true" tabindex="-1"></textarea>
+</div>
       </div>
     </div>
 
@@ -467,7 +508,27 @@
       <div class="suivi-section-hint">Analyse Transactionnelle : états du moi, jeux, scénarios, injonctions, permissions…</div>
       <div class="form-group">
         <label>Diagnostic Analyse Transactionnelle</label>
-        <textarea id="p-diagnosticAT" rows="12" placeholder="États du moi (Parent, Adulte, Enfant)&#10;Jeux psychologiques identifiés&#10;Scénario de vie&#10;Injonctions / Permissions&#10;Drivers&#10;…"></textarea>
+        <div class="rich-editor-wrap" data-rich-id="p-diagnosticAT">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','removeFormat')">Tx</button>
+  </div>
+  <div id="p-diagnosticAT-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="États du moi, jeux psychologiques, scénario de vie, injonctions / permissions, drivers…"></div>
+  <textarea id="p-diagnosticAT" class="rich-editor-value" rows="12" aria-hidden="true" tabindex="-1"></textarea>
+</div>
       </div>
     </div>
 
@@ -475,7 +536,27 @@
       <div class="suivi-section-hint">Notes de supervision, points à travailler en inter-séances, observations du thérapeute.</div>
       <div class="form-group">
         <label>Supervision</label>
-        <textarea id="p-supervision" rows="12" placeholder="Points à apporter en supervision&#10;Contre-transfert&#10;Hypothèses thérapeutiques&#10;…"></textarea>
+        <div class="rich-editor-wrap" data-rich-id="p-supervision">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','removeFormat')">Tx</button>
+  </div>
+  <div id="p-supervision-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Points à apporter en supervision, contre-transfert, hypothèses thérapeutiques…"></div>
+  <textarea id="p-supervision" class="rich-editor-value" rows="12" aria-hidden="true" tabindex="-1"></textarea>
+</div>
       </div>
     </div>
 
@@ -534,7 +615,27 @@
         </select>
       </div>
     </div>
-    <div class="form-group"><label>Notes de séance</label><textarea id="s-notes" rows="2" placeholder="Observations…"></textarea></div>
+    <div class="form-group"><label>Notes de séance</label><div class="rich-editor-wrap" data-rich-id="s-notes">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','removeFormat')">Tx</button>
+  </div>
+  <div id="s-notes-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Observations…"></div>
+  <textarea id="s-notes" class="rich-editor-value" rows="2" aria-hidden="true" tabindex="-1"></textarea>
+</div></div>
 
     <!-- Planification récurrente -->
     <div style="margin-top:.25rem;">
@@ -639,7 +740,27 @@
       <div class="suivi-section-hint">Antécédents, contexte de vie, histoire personnelle.</div>
       <div class="form-group">
         <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
-        <textarea id="sv-historique-new" rows="3" placeholder="Nouvelle observation…"></textarea>
+        <div class="rich-editor-wrap" data-rich-id="sv-historique-new">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','removeFormat')">Tx</button>
+  </div>
+  <div id="sv-historique-new-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Nouvelle observation…"></div>
+  <textarea id="sv-historique-new" class="rich-editor-value" rows="3" aria-hidden="true" tabindex="-1"></textarea>
+</div>
       </div>
       <div id="sv-historique-existing" class="suivi-existing"></div>
     </div>
@@ -649,7 +770,27 @@
       <div class="suivi-section-hint">Analyse Transactionnelle : états du moi, jeux, scénarios…</div>
       <div class="form-group">
         <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
-        <textarea id="sv-diagat-new" rows="3" placeholder="Nouvelle observation AT…"></textarea>
+        <div class="rich-editor-wrap" data-rich-id="sv-diagat-new">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','removeFormat')">Tx</button>
+  </div>
+  <div id="sv-diagat-new-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Nouvelle observation AT…"></div>
+  <textarea id="sv-diagat-new" class="rich-editor-value" rows="3" aria-hidden="true" tabindex="-1"></textarea>
+</div>
       </div>
       <div id="sv-diagat-existing" class="suivi-existing"></div>
     </div>
@@ -659,7 +800,27 @@
       <div class="suivi-section-hint">Points à travailler, hypothèses thérapeutiques, contre-transfert.</div>
       <div class="form-group">
         <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
-        <textarea id="sv-supervision-new" rows="3" placeholder="Nouvelle note de supervision…"></textarea>
+        <div class="rich-editor-wrap" data-rich-id="sv-supervision-new">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','removeFormat')">Tx</button>
+  </div>
+  <div id="sv-supervision-new-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Nouvelle note de supervision…"></div>
+  <textarea id="sv-supervision-new" class="rich-editor-value" rows="3" aria-hidden="true" tabindex="-1"></textarea>
+</div>
       </div>
       <div id="sv-supervision-existing" class="suivi-existing"></div>
     </div>
@@ -959,6 +1120,29 @@
     </div>
 
     <div id="gcal-import-log" style="margin-top:.5rem;font-size:12px;color:var(--warm-mid);min-height:1.2em;"></div>
+  </div>
+</div>
+
+<!-- ── Modal mot de passe sauvegarde chiffrée ── -->
+<div class="modal-overlay hidden" id="modal-backup-password">
+  <div class="modal" style="max-width:440px;">
+    <h2 class="modal-title" id="backup-password-title">🔐 Sauvegarde chiffrée</h2>
+    <p id="backup-password-text" style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:1rem;"></p>
+    <form id="backup-password-form">
+      <div class="form-group">
+        <label for="backup-password">Mot de passe <span class="req">*</span></label>
+        <input type="password" id="backup-password" autocomplete="new-password" minlength="8" required>
+        <div class="form-hint">8 caractères minimum. Utilisez un mot de passe unique et conservez-le précieusement : il ne peut pas être récupéré.</div>
+      </div>
+      <div class="form-group" id="backup-password-confirm-group">
+        <label for="backup-password-confirm">Confirmer le mot de passe <span class="req">*</span></label>
+        <input type="password" id="backup-password-confirm" autocomplete="new-password" minlength="8">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" type="button" id="backup-password-cancel">Annuler</button>
+        <button class="btn btn-primary" type="submit" id="backup-password-submit">Chiffrer et exporter</button>
+      </div>
+    </form>
   </div>
 </div>
 

@@ -143,6 +143,89 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 
 
 // ════════════════════════════════════════════════════════
+// TEXTE ENRICHI — éditeur local pour les notes cliniques
+// ════════════════════════════════════════════════════════
+
+const RICH_EDITOR_IDS = [
+  'p-notes', 'p-historique', 'p-diagnosticAT', 'p-supervision',
+  's-notes', 'sv-historique-new', 'sv-diagat-new', 'sv-supervision-new'
+];
+
+function sanitizeRichHtml(html) {
+  const source = String(html || '');
+  const looksHtml = /<\/?[a-z][^>]*>/i.test(source);
+  if (!looksHtml) return escHtml(source);
+
+  const tpl = document.createElement('template');
+  tpl.innerHTML = source;
+  const allowed = new Set(['DIV','P','BR','STRONG','B','EM','I','U','S','STRIKE','UL','OL','LI','SPAN','FONT']);
+
+  const clean = node => {
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.nodeValue || '');
+    if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
+    if (!allowed.has(node.tagName)) {
+      const frag = document.createDocumentFragment();
+      [...node.childNodes].forEach(ch => frag.appendChild(clean(ch)));
+      return frag;
+    }
+    const el = document.createElement(node.tagName.toLowerCase());
+    if (node.tagName === 'SPAN' || node.tagName === 'FONT') {
+      const color = (node.style.color || node.getAttribute('color') || '').trim();
+      if (/^(#[0-9a-f]{3,8}|rgb\([^)]*\)|rgba\([^)]*\)|[a-z]+)$/i.test(color)) el.style.color = color;
+      const bg = (node.style.backgroundColor || '').trim();
+      if (/^(#[0-9a-f]{3,8}|rgb\([^)]*\)|rgba\([^)]*\)|[a-z]+)$/i.test(bg)) el.style.backgroundColor = bg;
+    }
+    [...node.childNodes].forEach(ch => el.appendChild(clean(ch)));
+    return el;
+  };
+
+  const frag = document.createDocumentFragment();
+  [...tpl.content.childNodes].forEach(ch => frag.appendChild(clean(ch)));
+  const wrap = document.createElement('div');
+  wrap.appendChild(frag);
+  return wrap.innerHTML;
+}
+
+function richTextGet(id) {
+  const el = document.getElementById(id);
+  return el ? sanitizeRichHtml(el.value || '') : '';
+}
+
+function richTextSet(id, html) {
+  const value = sanitizeRichHtml(html || '');
+  const input = document.getElementById(id);
+  const editor = document.getElementById(id + '-editor');
+  if (input) input.value = value;
+  if (editor) editor.innerHTML = value;
+}
+
+function richTextExec(editorId, command, value = null) {
+  const editor = document.getElementById(editorId + '-editor');
+  if (!editor) return;
+  editor.focus();
+  document.execCommand(command, false, value);
+  const input = document.getElementById(editorId);
+  if (input) input.value = sanitizeRichHtml(editor.innerHTML);
+}
+
+function initRichTextEditors() {
+  RICH_EDITOR_IDS.forEach(id => {
+    const input = document.getElementById(id);
+    const editor = document.getElementById(id + '-editor');
+    if (!input || !editor || editor.dataset.ready) return;
+    editor.dataset.ready = '1';
+    editor.innerHTML = sanitizeRichHtml(input.value || '');
+    editor.addEventListener('input', () => {
+      input.value = sanitizeRichHtml(editor.innerHTML);
+    });
+  });
+}
+
+function richTextCommand(id, command, value = null) {
+  richTextExec(id, command, value);
+}
+
+// ════════════════════════════════════════════════════════
 // UTILITAIRES
 // ════════════════════════════════════════════════════════
 
@@ -360,62 +443,218 @@ async function resetApp() {
 function exportData() {
   const data = { db: DB, cfg: CFG, exportedAt: new Date().toISOString(), version: '1.0' };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
   a.download = `cabinet-backup-${today()}.json`;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast('Export téléchargé ✓', 'success');
+}
+
+const ENCRYPTED_BACKUP_VERSION = 1;
+const ENCRYPTED_BACKUP_ITERATIONS = 600000;
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function deriveBackupKey(password, salt, iterations = ENCRYPTED_BACKUP_ITERATIONS) {
+  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function getBackupPayload() {
+  return { db: DB, cfg: CFG, exportedAt: new Date().toISOString(), version: '1.0' };
+}
+
+async function exportEncryptedData() {
+  if (!window.crypto?.subtle) {
+    alert('Le chiffrement n’est pas disponible dans ce navigateur.');
+    return;
+  }
+  const password = await askBackupPassword({
+    title: '🔐 Export chiffré',
+    text: 'Choisissez un mot de passe pour protéger cette sauvegarde.',
+    confirm: true,
+    confirmLabel: 'Chiffrer et exporter'
+  });
+  if (password === null) return;
+  try {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveBackupKey(password, salt);
+    const plaintext = new TextEncoder().encode(JSON.stringify(getBackupPayload()));
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+    const envelope = {
+      format: 'cabinet-backup-encrypted', version: ENCRYPTED_BACKUP_VERSION,
+      algorithm: 'AES-256-GCM', kdf: 'PBKDF2-SHA-256', iterations: ENCRYPTED_BACKUP_ITERATIONS,
+      salt: bytesToBase64(salt), iv: bytesToBase64(iv), ciphertext: bytesToBase64(new Uint8Array(ciphertext))
+    };
+    downloadBlob(new Blob([JSON.stringify(envelope)], { type: 'application/octet-stream' }), `cabinet-backup-${today()}.cabinet.enc`);
+    toast('Sauvegarde chiffrée créée ✓', 'success');
+  } catch (err) {
+    console.error('[Cabinet] Export chiffré échoué.', err);
+    alert('Impossible de créer la sauvegarde chiffrée : ' + err.message);
+  }
+}
+
+async function decryptEncryptedBackup(file, password) {
+  const envelope = JSON.parse(await file.text());
+  if (envelope?.format !== 'cabinet-backup-encrypted' || envelope?.version !== ENCRYPTED_BACKUP_VERSION || envelope?.algorithm !== 'AES-256-GCM' || envelope?.kdf !== 'PBKDF2-SHA-256') {
+    throw new Error('Format de sauvegarde chiffrée non reconnu.');
+  }
+  if (!Number.isInteger(envelope.iterations) || envelope.iterations < 100000) throw new Error('Paramètres de dérivation invalides.');
+  const salt = base64ToBytes(envelope.salt);
+  const iv = base64ToBytes(envelope.iv);
+  const ciphertext = base64ToBytes(envelope.ciphertext);
+  if (salt.length !== 16 || iv.length !== 12 || ciphertext.length < 16) throw new Error('Sauvegarde chiffrée corrompue ou incomplète.');
+  const key = await deriveBackupKey(password, salt, envelope.iterations);
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  const data = JSON.parse(new TextDecoder().decode(plaintext));
+  if (!data.db || !data.cfg) throw new Error('Données de sauvegarde invalides.');
+  return data;
+}
+
+function applyImportedData(data, fromSetup = false) {
+  DB = data.db;
+  CFG = { ...CFG, ...data.cfg };
+  if (!DB.indisponibilites) DB.indisponibilites = [];
+  if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
+  if (!DB.factures) DB.factures = [];
+  if (!DB.patients) DB.patients = [];
+  if (!DB.seances) DB.seances = [];
+  if (!DB.nextNum) DB.nextNum = 1;
+  void dbSave();
+  cfgSave();
+  if (fromSetup) document.getElementById('setup-screen').classList.add('hidden');
+  updateHeader();
+  refreshLogoPreview('s');
+  renderDashboard();
+}
+
+function askBackupPassword({ title, text, confirm = false, confirmLabel = 'Valider' }) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('modal-backup-password');
+    const titleEl = document.getElementById('backup-password-title');
+    const textEl = document.getElementById('backup-password-text');
+    const pwdEl = document.getElementById('backup-password');
+    const confirmGroup = document.getElementById('backup-password-confirm-group');
+    const confirmEl = document.getElementById('backup-password-confirm');
+    const submitEl = document.getElementById('backup-password-submit');
+    const cancelEl = document.getElementById('backup-password-cancel');
+    const formEl = document.getElementById('backup-password-form');
+    titleEl.textContent = title;
+    textEl.textContent = text;
+    confirmGroup.style.display = confirm ? '' : 'none';
+    submitEl.textContent = confirmLabel;
+    pwdEl.value = '';
+    confirmEl.value = '';
+    overlay.classList.remove('hidden');
+    let done = false;
+    const finish = value => {
+      if (done) return;
+      done = true;
+      overlay.classList.add('hidden');
+      formEl.onsubmit = null;
+      cancelEl.onclick = null;
+      overlay.onclick = null;
+      resolve(value);
+    };
+    cancelEl.onclick = () => finish(null);
+    formEl.onsubmit = event => {
+      event.preventDefault();
+      const password = pwdEl.value;
+      if (password.length < 8) { alert('Le mot de passe doit comporter au moins 8 caractères.'); pwdEl.focus(); return; }
+      if (confirm && password !== confirmEl.value) { alert('Les deux mots de passe ne correspondent pas.'); confirmEl.focus(); return; }
+      finish(password);
+    };
+    overlay.onclick = event => { if (event.target === overlay) finish(null); };
+    setTimeout(() => pwdEl.focus(), 0);
+  });
+}
+
+function isEncryptedBackupFile(file) { return /\.cabinet\.enc$/i.test(file.name) || /\.enc$/i.test(file.name); }
+
+async function importBackupFile(file) {
+  if (isEncryptedBackupFile(file)) {
+    const password = await askBackupPassword({
+      title: '🔓 Importer une sauvegarde chiffrée',
+      text: 'Saisissez le mot de passe utilisé lors de l’export.',
+      confirm: false,
+      confirmLabel: 'Déchiffrer'
+    });
+    if (password === null) return null;
+    return decryptEncryptedBackup(file, password);
+  }
+  const data = JSON.parse(await file.text());
+  if (!data.db || !data.cfg) throw new Error('Format invalide');
+  return data;
+}
+
+function showBackupImportError(err) {
+  console.error('[Cabinet] Import échoué.', err);
+  const cryptoError = err?.name === 'OperationError' || /decrypt|incorrect|corrupt/i.test(err?.message || '');
+  alert(cryptoError ? 'Mot de passe incorrect ou sauvegarde chiffrée illisible.' : 'Fichier invalide : ' + err.message);
 }
 
 function importData() {
   const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.json';
-  input.onchange = e => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        if (!data.db || !data.cfg) throw new Error('Format invalide');
-        if (!confirm('Remplacer toutes les données actuelles ?')) return;
-        DB = data.db; CFG = { ...CFG, ...data.cfg };
-        void dbSave(); cfgSave(); updateHeader(); renderDashboard();
-        refreshLogoPreview('s');
-        toast('Import réussi ✓', 'success');
-      } catch (err) { alert('Fichier invalide : ' + err.message); }
-    };
-    reader.readAsText(e.target.files[0]);
+  input.type = 'file';
+  input.accept = '.json,.enc,.cabinet.enc,application/json,application/octet-stream';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const data = await importBackupFile(file);
+      if (!data) return;
+      if (!confirm('Remplacer toutes les données actuelles ?')) return;
+      applyImportedData(data);
+      toast('Import réussi ✓', 'success');
+    } catch (err) { showBackupImportError(err); }
   };
   input.click();
 }
 
-// Import depuis l'écran de configuration initiale
 function importDataFromSetup() {
   const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.json';
-  input.onchange = e => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        if (!data.db || !data.cfg) throw new Error('Format invalide');
-        DB  = data.db;
-        CFG = { ...CFG, ...data.cfg };
-        if (!DB.indisponibilites)        DB.indisponibilites        = [];
-        if (!DB.indisponibilites_regles) DB.indisponibilites_regles = [];
-        void dbSave(); cfgSave();
-        // Basculer directement dans l'application
-        document.getElementById('setup-screen').classList.add('hidden');
-        updateHeader();
-        refreshLogoPreview('s');
-        renderDashboard();
-        toast('Données importées avec succès ✓', 'success');
-      } catch (err) { alert('Fichier invalide : ' + err.message); }
-    };
-    reader.readAsText(e.target.files[0]);
+  input.type = 'file';
+  input.accept = '.json,.enc,.cabinet.enc,application/json,application/octet-stream';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const data = await importBackupFile(file);
+      if (!data) return;
+      applyImportedData(data, true);
+      toast('Données importées avec succès ✓', 'success');
+    } catch (err) { showBackupImportError(err); }
   };
   input.click();
 }
-
 
 // ════════════════════════════════════════════════════════
 // GOOGLE DRIVE — Sauvegarde automatique
@@ -1182,6 +1421,10 @@ function resetPatientForm(p = null) {
   document.getElementById('p-historique').value  = p ? (p.historique || '') : '';
   document.getElementById('p-diagnosticAT').value= p ? (p.diagnosticAT || '') : '';
   document.getElementById('p-supervision').value = p ? (p.supervision || '') : '';
+  richTextSet('p-notes', p ? (p.notes || '') : '');
+  richTextSet('p-historique', p ? (p.historique || '') : '');
+  richTextSet('p-diagnosticAT', p ? (p.diagnosticAT || '') : '');
+  richTextSet('p-supervision', p ? (p.supervision || '') : '');
   showTab('tab-infos', document.querySelector('#modal-patient .tab-btn'));
 }
 
@@ -1200,10 +1443,10 @@ function savePatient() {
     tarif:        parseFloat(document.getElementById('p-tarif').value) || CFG.tarif || 60,
     statut:       document.getElementById('p-statut').value,
     motif:        document.getElementById('p-motif').value.trim(),
-    notes:        document.getElementById('p-notes').value.trim(),
-    historique:   document.getElementById('p-historique').value.trim(),
-    diagnosticAT: document.getElementById('p-diagnosticAT').value.trim(),
-    supervision:  document.getElementById('p-supervision').value.trim()
+    notes:        richTextGet('p-notes'),
+    historique:   richTextGet('p-historique'),
+    diagnosticAT: richTextGet('p-diagnosticAT'),
+    supervision:  richTextGet('p-supervision')
   };
 
   if (id) {
@@ -1275,7 +1518,7 @@ function viewPatient(id, returnPage) {
       <div><span style="color:var(--warm-mid);">Statut :</span> <span class="badge badge-${p.statut === 'actif' ? 'actif' : 'annulé'}">${p.statut}</span></div>
     </div>
 
-    ${p.notes ? `<div class="section-title">Notes générales</div><div class="notes-block" style="margin-bottom:1.25rem;">${escHtml(p.notes)}</div>` : ''}
+    ${p.notes ? `<div class="section-title">Notes générales</div><div class="notes-block rich-content" style="margin-bottom:1.25rem;">${sanitizeRichHtml(p.notes)}</div>` : ''}
 
     <!-- Sections suivi thérapeutique -->
     <div class="suivi-tabs-fiche">
@@ -1320,7 +1563,7 @@ function ficheTab(p, field, label, placeholder) {
     </div>`;
   }
   // Afficher les entrées horodatées (format "── [date] ──\n...") ou le texte libre
-  return `<div class="notes-block suivi-content">${escHtml(content)}</div>`;
+  return `<div class="notes-block suivi-content rich-content">${sanitizeRichHtml(content)}</div>`;
 }
 
 // Affichage des onglets dans la fiche patient (généré dynamiquement)
@@ -1342,9 +1585,7 @@ function openSuiviSeance(seanceId) {
   document.getElementById('suivi-seance-title').textContent = `Suivi — ${p.prenom} ${p.nom.toUpperCase()} · séance du ${formatDate(s.date)}`;
 
   // Vider les champs de nouvelle note
-  ['sv-historique-new', 'sv-diagat-new', 'sv-supervision-new'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
+  ['sv-historique-new', 'sv-diagat-new', 'sv-supervision-new'].forEach(id => richTextSet(id, ''));
 
   // Afficher le contenu existant
   renderSuiviExisting('sv-historique-existing',  p.historique  || '');
@@ -1359,7 +1600,7 @@ function openSuiviSeance(seanceId) {
 function renderSuiviExisting(containerId, content) {
   const el = document.getElementById(containerId);
   el.innerHTML = content
-    ? `<div class="suivi-section-hint" style="margin-top:.5rem;">Contenu actuel :</div><div class="notes-block suivi-content">${escHtml(content)}</div>`
+    ? `<div class="suivi-section-hint" style="margin-top:.5rem;">Contenu actuel :</div><div class="notes-block suivi-content rich-content">${sanitizeRichHtml(content)}</div>`
     : `<div style="color:var(--warm-mid);font-size:12px;margin-top:.5rem;font-style:italic;">Aucun contenu existant.</div>`;
 }
 
@@ -1381,9 +1622,9 @@ function saveSuiviSeance() {
   ];
 
   sections.forEach(({ newId, field }) => {
-    const newText = document.getElementById(newId).value.trim();
+    const newText = richTextGet(newId).trim();
     if (!newText) return;
-    const stamp   = `── ${dateStamp} ──\n${newText}`;
+    const stamp   = `<div class="suivi-stamp">── ${escHtml(dateStamp)} ──</div>${newText}`;
     p[field]      = p[field] ? stamp + '\n\n' + p[field] : stamp;
     changed       = true;
   });
@@ -1488,7 +1729,7 @@ function resetSeanceForm() {
   document.getElementById('s-tarif').value    = CFG.tarif || 60;
   document.getElementById('s-statut').value   = 'planifié';
   document.getElementById('s-paiement').value = '';
-  document.getElementById('s-notes').value    = '';
+  richTextSet('s-notes', '');
   document.getElementById('s-recurrence').checked = false;
   toggleRecurrence();
 }
@@ -1580,7 +1821,7 @@ function saveSeance() {
     tarif:    parseFloat(document.getElementById('s-tarif').value) || 60,
     statut:   document.getElementById('s-statut').value,
     paiement: document.getElementById('s-paiement').value,
-    notes:    document.getElementById('s-notes').value.trim()
+    notes:    richTextGet('s-notes')
   };
 
   // Vérification : jour indisponible
@@ -1659,7 +1900,7 @@ function editSeance(id) {
     document.getElementById('s-tarif').value         = s.tarif;
     document.getElementById('s-statut').value        = s.statut;
     document.getElementById('s-paiement').value      = s.paiement || '';
-    document.getElementById('s-notes').value         = s.notes    || '';
+    richTextSet('s-notes', s.notes || '');
     document.getElementById('s-recurrence').checked = false;
     toggleRecurrence();
   }, 50);
@@ -1742,7 +1983,7 @@ function viewSeance(id, returnPatientId = '') {
       ${s.dateReglement ? `<div style="display:flex;gap:.75rem;"><span style="color:var(--warm-mid);min-width:110px;">Réglé le</span><span>${formatDate(s.dateReglement)}</span></div>` : ''}
       ${s.facture       ? `<div style="display:flex;gap:.75rem;align-items:center;"><span style="color:var(--warm-mid);min-width:110px;">Facture</span><span class="badge badge-réglée">Facturée</span></div>` : ''}
     </div>
-    ${s.notes ? `<div style="margin-top:1rem;"><div class="section-title">Notes</div><div class="notes-block">${s.notes}</div></div>` : ''}
+    ${s.notes ? `<div style="margin-top:1rem;"><div class="section-title">Notes</div><div class="notes-block rich-content">${sanitizeRichHtml(s.notes)}</div></div>` : ''}
     ${btns}`;
 
   document.getElementById('modal-seance-view').classList.remove('hidden');
@@ -2523,6 +2764,7 @@ const _manifest = { name: 'Cabinet Psychothérapie', short_name: 'Cabinet Psy', 
 document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(_manifest)], { type: 'application/manifest+json' })));
 
 // dbLoad est async (IndexedDB) — on attend qu'elle soit terminée avant tout rendu
+initRichTextEditors();
 (async () => {
   await dbLoad();
 
