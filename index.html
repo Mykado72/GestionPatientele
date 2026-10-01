@@ -2,14 +2,21 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#6b8f71">
   <meta name="description" content="Cabinet de psychothérapie – Gestion patients, rendez-vous et facturation">
   <title>Cabinet Psychothérapie</title>
-  <link rel="manifest" href="#" id="manifest-link">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Cabinet Psy">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preload" href="fonts/dm-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -141,6 +148,8 @@
 
 <main>
 
+  <div id="backup-banner"></div>
+
   <!-- ── DASHBOARD ── -->
   <div class="page active" id="page-dashboard">
     <div class="page-header">
@@ -243,7 +252,25 @@
     </div>
 
     <div class="info-box terra">
-      <strong>⚑ Confidentialité :</strong> Toutes vos informations restent stockées uniquement sur cet appareil (localStorage). Aucune donnée ne transite par un serveur externe.
+      <strong>⚑ Confidentialité :</strong> Vos informations sont stockées sur cet appareil. Activez le verrouillage ci-dessous pour les chiffrer. Seules les sauvegardes Google Drive (chiffrées avant envoi) et l’import Google Agenda, si vous les activez, utilisent un service externe.
+    </div>
+
+    <!-- Sécurité -->
+    <div class="settings-section">
+      <div class="settings-section-title">Sécurité</div>
+      <div class="card"><div id="security-status-box"></div></div>
+    </div>
+
+    <!-- Stockage local -->
+    <div class="settings-section">
+      <div class="settings-section-title">Stockage sur cet appareil</div>
+      <div class="card"><div id="storage-status-box"></div></div>
+    </div>
+
+    <!-- Application (PWA) -->
+    <div class="settings-section">
+      <div class="settings-section-title">Application</div>
+      <div class="card"><div id="pwa-status-box"></div></div>
     </div>
 
     <!-- Export / Import -->
@@ -251,12 +278,19 @@
       <div class="settings-section-title">Sauvegarde des données</div>
       <div class="card">
         <p style="font-size:13px;color:var(--warm-mid);margin-bottom:1rem;line-height:1.6;">Exportez toutes vos données (patients, séances, factures, paramètres) dans un fichier JSON pour les sauvegarder ou les transférer vers un autre appareil.</p>
+        <p id="backup-last-line" style="font-size:12px;color:var(--sage-dark);margin-bottom:.9rem;"></p>
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="exportData()">⬇ Exporter les données</button>
+          <button class="btn btn-primary" onclick="exportData()">⬇ Exporter (non chiffré)</button>
           <button class="btn btn-secondary" onclick="importData()">⬆ Importer des données</button>
-          <button class="btn btn-secondary" onclick="exportEncryptedData()">🔐 Exporter chiffré</button>
+          <button class="btn btn-primary" onclick="exportEncryptedData()">🔐 Exporter chiffré (recommandé)</button>
         </div>
       </div>
+    </div>
+
+    <!-- Sauvegarde automatique dans un dossier -->
+    <div class="settings-section">
+      <div class="settings-section-title">Sauvegarde automatique dans un dossier</div>
+      <div class="card"><div id="folder-backup-box"></div></div>
     </div>
 
     <div class="settings-section">
@@ -1131,12 +1165,12 @@
     <form id="backup-password-form">
       <div class="form-group">
         <label for="backup-password">Mot de passe <span class="req">*</span></label>
-        <input type="password" id="backup-password" autocomplete="new-password" minlength="8" required>
-        <div class="form-hint">8 caractères minimum. Utilisez un mot de passe unique et conservez-le précieusement : il ne peut pas être récupéré.</div>
+        <input type="password" id="backup-password" autocomplete="new-password" required>
+        <div class="form-hint">12 caractères minimum à la création. Utilisez un mot de passe unique et conservez-le précieusement : il ne peut pas être récupéré.</div>
       </div>
       <div class="form-group" id="backup-password-confirm-group">
         <label for="backup-password-confirm">Confirmer le mot de passe <span class="req">*</span></label>
-        <input type="password" id="backup-password-confirm" autocomplete="new-password" minlength="8">
+        <input type="password" id="backup-password-confirm" autocomplete="new-password">
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" type="button" id="backup-password-cancel">Annuler</button>
@@ -1149,6 +1183,20 @@
 <!-- ── Toast ── -->
 <div class="toast hidden" id="toast"></div>
 
-<script src="app.js"></script>
+<!-- Ordre important : scripts classiques partageant la portée globale
+     (les onclick="…" inline et les variables DB/CFG en dépendent). -->
+<script src="js/data.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/security.js"></script>
+<script src="js/google.js"></script>
+<script src="js/invoices.js"></script>
+<script src="js/ui/navigation.js"></script>
+<script src="js/ui/settings.js"></script>
+<script src="js/ui/patients.js"></script>
+<script src="js/ui/sessions.js"></script>
+<script src="js/ui/dashboard.js"></script>
+<script src="js/backup.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

@@ -255,11 +255,25 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .recurrence-preview { background: var(--sage-pale); border: 1px solid var(--sage-light); border-radius: var(--radius-sm); padding: .6rem .85rem; font-size: 12px; color: var(--sage-dark); line-height: 1.6; margin-top: .75rem; }
 
 /* ── Toast ── */
-.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--warm-dark); color: white; padding: .75rem 1.25rem; border-radius: var(--radius-sm); font-size: 13px; z-index: 999; box-shadow: var(--shadow-lg); animation: su .2s ease; }
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--warm-dark); color: white; padding: .75rem 1.25rem; border-radius: var(--radius-sm); font-size: 13px; z-index: 1300; box-shadow: var(--shadow-lg); animation: su .2s ease; }
 @keyframes su { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .toast.hidden { display: none; }
 .toast.success { background: var(--success); }
 .toast.danger  { background: var(--danger);  }
+
+/* ── Bandeau de rappel de sauvegarde ── */
+.backup-banner { display: flex; align-items: center; gap: .75rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.backup-banner .bb-text { flex: 1; min-width: 220px; font-size: 13px; }
+.backup-banner .bb-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+/* ── PWA : barre de mise à jour ── */
+#pwa-update-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 2rem); background: var(--warm-dark); color: #fff; padding: .7rem 1rem; border-radius: var(--radius-sm); font-size: 13px; z-index: 1400; box-shadow: var(--shadow-lg); animation: su .2s ease; }
+.toast { bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)); }
+
+/* ── Mode application installée ── */
+@media (display-mode: standalone) {
+  body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+}
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -315,3 +329,6 @@ main { flex: 1; padding: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; 
 .rich-content p, .rich-content div { margin:.15rem 0; }
 .rich-content .suivi-stamp { font-weight:500; color:var(--warm-mid); margin:.35rem 0 .15rem; }
 .rich-editor-value { display:none !important; }
+
+/* Au premier lancement, l'écran de configuration (z-index 1000) ne doit pas masquer la saisie du mot de passe */
+#modal-backup-password { z-index: 1200; }
