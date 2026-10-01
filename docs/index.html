@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6b8f71">
+  <meta name="description" content="Cabinet de psychothérapie – Gestion patients, rendez-vous et facturation">
+  <title>Cabinet Psychothérapie</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Cabinet Psy">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preload" href="fonts/dm-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     ÉCRAN DE CONFIGURATION INITIALE
+══════════════════════════════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <div class="setup-logo-mark">✦</div>
+      <div class="setup-logo-name">Cabinet de Psychothérapie</div>
+    </div>
+    <p class="setup-intro">Bienvenue ! Renseignez vos informations professionnelles. Elles apparaîtront sur vos factures et resteront stockées uniquement sur cet appareil.</p>
+
+    <!-- Reprise depuis un backup -->
+    <div class="info-box sage" style="margin-bottom:1.5rem;">
+      <strong>Vous utilisez déjà cette application sur un autre appareil ?</strong><br>
+      <span style="font-size:12px;">Importez votre fichier de sauvegarde (JSON classique ou sauvegarde chiffrée) pour récupérer toutes vos données (patients, séances, factures).</span>
+      <div style="margin-top:.6rem;">
+        <button type="button" class="btn btn-primary btn-sm" onclick="importDataFromSetup()">⬆ Importer un fichier de sauvegarde</button>
+      </div>
+    </div>
+
+    <div class="setup-section">Logo du cabinet (optionnel)</div>
+    <div class="form-group">
+      <div class="logo-upload-zone" onclick="document.getElementById('c-logo-input').click()">
+        <img id="c-logo-preview" src="" alt="" style="display:none;max-height:72px;max-width:200px;object-fit:contain;">
+        <span id="c-logo-placeholder">📷 Cliquer pour ajouter un logo (PNG, JPG — max 500 Ko)</span>
+      </div>
+      <input type="file" id="c-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('c')">
+      <button type="button" class="btn btn-secondary btn-sm" id="c-logo-remove" style="display:none;margin-top:.4rem;" onclick="removeLogo('c')">✕ Supprimer le logo</button>
+      <div class="form-hint">Apparaîtra en haut à gauche de vos factures.</div>
+    </div>
+
+    <div class="setup-section">Identité professionnelle</div>
+    <div class="form-row">
+      <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="c-prenom" placeholder="Prénom"></div>
+      <div class="form-group"><label>Nom <span class="req">*</span></label><input type="text" id="c-nom" placeholder="NOM"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Titre professionnel <span class="req">*</span></label><input type="text" id="c-titre" value="Psychopraticienne"></div>
+      <div class="form-group"><label>Formation / Organisme</label><input type="text" id="c-formation" placeholder="Ex : AT Psy Paris"></div>
+    </div>
+
+    <div class="setup-section">Coordonnées du cabinet</div>
+    <div class="form-group"><label>Adresse <span class="req">*</span></label><input type="text" id="c-adresse" placeholder="Numéro et rue"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Code postal <span class="req">*</span></label><input type="text" id="c-cp" placeholder="72000"></div>
+      <div class="form-group"><label>Ville <span class="req">*</span></label><input type="text" id="c-ville" placeholder="Le Mans"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Téléphone</label><input type="tel" id="c-tel" placeholder="06 xx xx xx xx"></div>
+      <div class="form-group"><label>Email professionnel</label><input type="email" id="c-email" placeholder="contact@cabinet.fr"></div>
+    </div>
+
+    <div class="setup-section">Informations légales</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>N° SIRET <span class="req">*</span></label>
+        <input type="text" id="c-siret" placeholder="000 000 000 00000" maxlength="17">
+        <div class="form-hint">14 chiffres — obligatoire sur les factures</div>
+      </div>
+      <div class="form-group">
+        <label>N° TVA intracommunautaire</label>
+        <input type="text" id="c-tva-num" placeholder="FR xx 000000000">
+        <div class="form-hint">Facultatif si exonéré de TVA</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Régime TVA <span class="req">*</span></label>
+      <select id="c-tva-mention" onchange="toggleTvaCustom('c')">
+        <option value="Exonéré de TVA – Art. 261-4-1° du CGI (soins à la personne)">Exonéré de TVA – Art. 261-4-1° CGI ← psychothérapeutes</option>
+        <option value="TVA non applicable – Art. 293 B du CGI (franchise en base)">TVA non applicable – Art. 293 B CGI (franchise en base)</option>
+        <option value="Assujetti à la TVA au taux de 20 %">Assujetti à la TVA 20 %</option>
+        <option value="custom">Autre (à préciser)</option>
+      </select>
+    </div>
+    <div class="form-group" id="c-tva-custom-group" style="display:none;">
+      <label>Mention personnalisée</label>
+      <input type="text" id="c-tva-custom">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tarif séance par défaut (€) <span class="req">*</span></label>
+        <input type="number" id="c-tarif" value="60" min="0" step="5">
+      </div>
+      <div class="form-group">
+        <label>Délai paiement factures (jours)</label>
+        <input type="number" id="c-delai" value="30" min="0">
+      </div>
+    </div>
+
+    <div class="setup-section">Coordonnées bancaires</div>
+    <div class="form-row">
+      <div class="form-group"><label>IBAN</label><input type="text" id="c-iban" placeholder="FR76 xxxx xxxx xxxx xxxx xxxx xxx"></div>
+      <div class="form-group"><label>BIC / SWIFT</label><input type="text" id="c-bic" placeholder="XXXXFRPP"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Banque</label><input type="text" id="c-banque" placeholder="Crédit Agricole…"></div>
+      <div class="form-group"><label>Modes de paiement acceptés</label><input type="text" id="c-paiements" value="Espèces, chèque, virement bancaire"></div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;border-top:1px solid var(--beige-mid);padding-top:1.25rem;">
+      <button class="btn btn-primary" onclick="saveConfig()" style="padding:.65rem 2rem;font-size:14px;">Enregistrer et démarrer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APPLICATION PRINCIPALE
+══════════════════════════════════════ -->
+<header>
+  <div class="logo-mark" id="hdr-initials">✦</div>
+  <div class="logo-text">
+    <div class="name" id="hdr-name">Cabinet de Psychothérapie</div>
+    <div class="subtitle" id="hdr-sub">Gestion du cabinet</div>
+  </div>
+  <div id="hdr-drive-badge" style="margin-left:auto;font-size:11px;color:var(--warm-mid);display:none;align-items:center;gap:.3rem;"></div>
+</header>
+
+<nav>
+  <button class="nav-btn active" onclick="showPage('dashboard', this)">◆ Tableau de bord</button>
+  <button class="nav-btn" onclick="showPage('patients', this)">◈ Patients</button>
+  <button class="nav-btn" onclick="showPage('seances', this)">◷ Séances</button>
+  <button class="nav-btn" onclick="showPage('factures', this)">◻ Factures</button>
+  <button class="nav-btn" onclick="showPage('parametres', this)">⚙ Paramètres</button>
+</nav>
+
+<main>
+
+  <div id="backup-banner"></div>
+
+  <!-- ── DASHBOARD ── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <h1 class="page-title" id="dash-greeting">Tableau de bord</h1>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card stat-card-clickable" id="st-p-card" onclick="goToPatients('actif')" title="Voir les patients actifs" style="cursor:pointer;">
+        <div class="stat-label">Patients actifs</div><div class="stat-value" id="st-p">0</div>
+      </div>
+      <div class="stat-card stat-card-clickable" id="st-s-card" onclick="goToSeancesMois()" title="Voir les séances du mois" style="cursor:pointer;">
+        <div class="stat-label">Séances ce mois</div><div class="stat-value" style="font-size:18px;" id="st-s">0</div><div class="stat-sublabel">honorées / planifiées</div>
+      </div>
+      <div class="stat-card" id="st-f-card"><div class="stat-label">À facturer</div><div class="stat-value" style="font-size:18px;" id="st-f">0</div><div class="stat-sublabel">réglées / honorées</div></div>
+      <div class="stat-card stat-card-clickable" id="st-ca-card" onclick="showCaModal()" title="Voir le détail du CA" style="cursor:pointer;">
+        <div class="stat-label">CA ce mois</div><div class="stat-value" style="font-size:18px;" id="st-ca">0 €</div><div class="stat-sublabel">réglé / total</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+          <div style="font-family:var(--font-serif);font-size:17px;" id="cal-title">—</div>
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-secondary btn-sm" onclick="calNav(-1)">‹</button>
+            <button class="btn btn-secondary btn-sm" onclick="calNav(1)">›</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendar"></div>
+      </div>
+      <div class="card" style="max-height:340px;overflow-y:auto;">
+        <div class="section-title">Prochaines séances</div>
+        <div id="upcoming-list"><div style="color:var(--warm-mid);font-size:13px;">Aucune séance planifiée</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PATIENTS ── -->
+  <div class="page" id="page-patients">
+    <div class="page-header">
+      <h1 class="page-title">Patients</h1>
+      <button class="btn btn-primary" onclick="openModal('modal-patient')">+ Nouveau patient</button>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-bottom:.75rem;align-items:center;flex-wrap:wrap;">
+      <div class="search-bar" style="margin-bottom:0;flex:1;min-width:180px;">
+        <span class="search-icon">⌕</span>
+        <input type="text" placeholder="Rechercher un patient…" id="search-patients" oninput="renderPatients()">
+      </div>
+      <select id="filter-patient-statut" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderPatients()">
+        <option value="">Tous les statuts</option>
+        <option value="actif">Actifs</option>
+        <option value="inactif">Inactifs</option>
+        <option value="suivi-terminé">Suivi terminé</option>
+      </select>
+    </div>
+    <div class="card-grid" id="patients-list"></div>
+  </div>
+
+  <!-- ── SÉANCES ── -->
+  <div class="page" id="page-seances">
+    <div class="page-header">
+      <h1 class="page-title">Séances</h1>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="openGcalImportOrConnect()" title="Importer depuis Google Agenda">📅 Google Agenda</button>
+        <button class="btn btn-secondary" onclick="openModalIndispo()" title="Ajouter une indisponibilité">⛔ Indisponibilité</button>
+        <button class="btn btn-primary" onclick="openModal('modal-seance')">+ Nouvelle séance</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
+      <select id="filter-statut" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()">
+        <option value="">Tous les statuts</option>
+        <option value="planifié">Planifiées</option>
+        <option value="honoré">Honorées</option>
+        <option value="réglée">Réglées</option>
+        <option value="facturé">Facturées</option>
+        <option value="annulé">Annulées</option>
+      </select>
+      <select id="filter-pat" class="btn btn-secondary" style="border:1.5px solid var(--beige-mid);font-size:13px;cursor:pointer;" onchange="renderSeances()">
+        <option value="">Tous les patients</option>
+      </select>
+      <div style="display:flex;align-items:center;gap:.4rem;">
+        <input type="date" id="filter-date" style="border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);padding:.35rem .6rem;font-size:13px;font-family:var(--font-sans);background:var(--white);color:var(--warm-dark);cursor:pointer;" onchange="renderSeances()">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('filter-date').value='';renderSeances();" title="Effacer le filtre date">✕</button>
+      </div>
+    </div>
+    <div id="gcal-expiry-banner" style="display:none;margin-bottom:.75rem;"></div>
+    <div id="seances-list"></div>
+    <div id="indispo-regles-summary"></div>
+  </div>
+  <div class="page" id="page-factures">
+    <div class="page-header">
+      <h1 class="page-title">Factures</h1>
+      <button class="btn btn-primary" onclick="openModal('modal-facture')">+ Nouvelle facture</button>
+    </div>
+    <div id="factures-list"></div>
+  </div>
+
+  <!-- ── PARAMÈTRES ── -->
+  <div class="page" id="page-parametres">
+    <div class="page-header">
+      <h1 class="page-title">Paramètres</h1>
+    </div>
+
+    <div class="info-box terra">
+      <strong>⚑ Confidentialité :</strong> Vos informations sont stockées sur cet appareil. Activez le verrouillage ci-dessous pour les chiffrer. Seules les sauvegardes Google Drive (chiffrées avant envoi) et l’import Google Agenda, si vous les activez, utilisent un service externe.
+    </div>
+
+    <!-- Sécurité -->
+    <div class="settings-section">
+      <div class="settings-section-title">Sécurité</div>
+      <div class="card"><div id="security-status-box"></div></div>
+    </div>
+
+    <!-- Stockage local -->
+    <div class="settings-section">
+      <div class="settings-section-title">Stockage sur cet appareil</div>
+      <div class="card"><div id="storage-status-box"></div></div>
+    </div>
+
+    <!-- Application (PWA) -->
+    <div class="settings-section">
+      <div class="settings-section-title">Application</div>
+      <div class="card"><div id="pwa-status-box"></div></div>
+    </div>
+
+    <!-- Export / Import -->
+    <div class="settings-section">
+      <div class="settings-section-title">Sauvegarde des données</div>
+      <div class="card">
+        <p style="font-size:13px;color:var(--warm-mid);margin-bottom:1rem;line-height:1.6;">Exportez toutes vos données (patients, séances, factures, paramètres) dans un fichier JSON pour les sauvegarder ou les transférer vers un autre appareil.</p>
+        <p id="backup-last-line" style="font-size:12px;color:var(--sage-dark);margin-bottom:.9rem;"></p>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="exportData()">⬇ Exporter (non chiffré)</button>
+          <button class="btn btn-secondary" onclick="importData()">⬆ Importer des données</button>
+          <button class="btn btn-primary" onclick="exportEncryptedData()">🔐 Exporter chiffré (recommandé)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sauvegarde automatique dans un dossier -->
+    <div class="settings-section">
+      <div class="settings-section-title">Sauvegarde automatique dans un dossier</div>
+      <div class="card"><div id="folder-backup-box"></div></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Identité professionnelle</div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group"><label>Prénom</label><input type="text" id="s-prenom"></div>
+          <div class="form-group"><label>Nom</label><input type="text" id="s-nom"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Titre professionnel</label><input type="text" id="s-titre"></div>
+          <div class="form-group"><label>Formation</label><input type="text" id="s-formation"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Coordonnées du cabinet</div>
+      <div class="card">
+        <div class="form-group"><label>Adresse</label><input type="text" id="s-adresse"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Code postal</label><input type="text" id="s-cp"></div>
+          <div class="form-group"><label>Ville</label><input type="text" id="s-ville"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Téléphone</label><input type="tel" id="s-tel"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="s-email"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Informations légales &amp; facturation</div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group"><label>N° SIRET</label><input type="text" id="s-siret" maxlength="17"></div>
+          <div class="form-group"><label>N° TVA intracommunautaire</label><input type="text" id="s-tva-num"></div>
+        </div>
+        <div class="form-group">
+          <label>Régime TVA</label>
+          <select id="s-tva-mention" onchange="toggleTvaCustom('s')">
+            <option value="Exonéré de TVA – Art. 261-4-1° du CGI (soins à la personne)">Exonéré de TVA – Art. 261-4-1° CGI (soins à la personne) ← psychothérapeutes</option>
+            <option value="TVA non applicable – Art. 293 B du CGI (franchise en base)">TVA non applicable – Art. 293 B CGI (franchise en base)</option>
+            <option value="Assujetti à la TVA au taux de 20 %">Assujetti à la TVA 20 %</option>
+            <option value="custom">Autre (à préciser)</option>
+          </select>
+        </div>
+        <div class="form-group" id="s-tva-custom-group" style="display:none;">
+          <label>Mention personnalisée</label>
+          <input type="text" id="s-tva-custom">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tarif séance par défaut (€)</label>
+            <input type="number" id="s-tarif" min="0" step="5">
+          </div>
+          <div class="form-group">
+            <label>Délai paiement factures (jours)</label>
+            <input type="number" id="s-delai" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>N° de facture suivant</label>
+          <input type="number" id="s-next-num" min="1">
+          <div class="form-hint">La numérotation doit être continue et sans rupture (obligation légale française).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Coordonnées bancaires</div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group"><label>IBAN</label><input type="text" id="s-iban"></div>
+          <div class="form-group"><label>BIC / SWIFT</label><input type="text" id="s-bic"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Banque</label><input type="text" id="s-banque"></div>
+          <div class="form-group"><label>Modes de paiement acceptés</label><input type="text" id="s-paiements"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Sauvegarde Google Drive</div>
+      <div class="card">
+        <p style="font-size:13px;color:var(--warm-mid);margin-bottom:.75rem;line-height:1.6;">
+          Sauvegarde automatique de toutes vos données dans un fichier <strong>cabinet-psychotherapie-backup.json</strong> sur votre Google Drive. L'application n'accède qu'aux fichiers qu'elle a elle-même créés (<code>drive.file</code>).
+        </p>
+        <div id="gdrive-status-box"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Google Agenda</div>
+      <div class="card">
+        <div id="gcal-status-box" style="margin-bottom:.75rem;"></div>
+        <div class="form-group">
+          <label>Client ID OAuth 2.0</label>
+          <input type="text" id="s-gcal-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com">
+          <div class="form-hint">
+            <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--sage-dark);">Google Cloud Console</a>
+            → API &amp; Services → Activer <strong>Google Calendar API</strong> → Identifiants → Créer Client OAuth → Application Web.<br>
+            Ajouter <code id="gcal-origin-hint"></code> comme <strong>Origine JavaScript autorisée</strong>.<br>
+            L'application ne modifie jamais votre agenda (lecture seule).
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="saveGcalClientId()">Enregistrer le Client ID</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Logo du cabinet</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+          <div class="logo-upload-zone" style="min-width:160px;flex-shrink:0;" onclick="document.getElementById('s-logo-input').click()">
+            <img id="s-logo-preview" src="" alt="" style="display:none;max-height:64px;max-width:160px;object-fit:contain;">
+            <span id="s-logo-placeholder">📷 Cliquer pour ajouter</span>
+          </div>
+          <input type="file" id="s-logo-input" accept="image/*" style="display:none;" onchange="handleLogoUpload('s')">
+          <div style="flex:1;">
+            <p style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:.5rem;">Affiché en haut à gauche des factures. PNG, JPG ou SVG, max 500 Ko.</p>
+            <button type="button" class="btn btn-secondary btn-sm" id="s-logo-remove" style="display:none;" onclick="removeLogo('s')">✕ Supprimer le logo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-top:.5rem;">
+      <button class="btn btn-danger btn-sm" onclick="resetApp()">Réinitialiser toutes les données</button>
+      <button class="btn btn-primary" onclick="saveSettings()" style="padding:.65rem 2rem;">Enregistrer les modifications</button>
+    </div>
+  </div>
+
+  <!-- ── FICHE PATIENT (pleine page) ── -->
+  <div class="page" id="page-patient-detail">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <button class="btn btn-secondary btn-sm" onclick="closeFichePatient()">← Retour</button>
+        <h1 class="page-title" style="margin:0;" id="fiche-page-title">Fiche patient</h1>
+      </div>
+      <div id="fiche-page-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;"></div>
+    </div>
+    <div id="fiche-content" style="max-width:860px;"></div>
+  </div>
+
+</main>
+
+<!-- ══════════════════════════════════════
+     MODALS
+══════════════════════════════════════ -->
+
+<!-- ── Modal Patient ── -->
+<div class="modal-overlay hidden" id="modal-patient">
+  <div class="modal" style="max-width:600px;">
+    <button class="modal-close" onclick="closeModal('modal-patient')">✕</button>
+    <h2 class="modal-title" id="mp-title">Nouveau patient</h2>
+    <input type="hidden" id="p-edit-id">
+
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="showTab('tab-infos', this)">Informations</button>
+      <button class="tab-btn" onclick="showTab('tab-historique', this)">Historique</button>
+      <button class="tab-btn" onclick="showTab('tab-diagat', this)">Diagnostic AT</button>
+      <button class="tab-btn" onclick="showTab('tab-supervision', this)">Supervision</button>
+    </div>
+
+    <div id="tab-infos" data-tab>
+      <div class="form-row">
+        <div class="form-group"><label>Prénom <span class="req">*</span></label><input type="text" id="p-prenom" placeholder="Prénom"></div>
+        <div class="form-group"><label>Nom <span class="req">*</span></label><input type="text" id="p-nom" placeholder="NOM"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Date de naissance</label><input type="date" id="p-naissance"></div>
+        <div class="form-group"><label>Téléphone</label><input type="tel" id="p-tel" placeholder="06 xx xx xx xx"></div>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="p-email" placeholder="email@exemple.fr"></div>
+      <div class="form-group"><label>Adresse complète</label><input type="text" id="p-adresse" placeholder="Rue, code postal, ville"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tarif séance (€)</label>
+          <input type="number" id="p-tarif" value="60" step="5" min="0">
+        </div>
+        <div class="form-group">
+          <label>Statut</label>
+          <select id="p-statut">
+            <option value="actif">Actif</option>
+            <option value="inactif">Inactif</option>
+            <option value="suivi-terminé">Suivi terminé</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Motif de consultation</label><input type="text" id="p-motif" placeholder="Ex : anxiété, relations, deuil…"></div>
+      <div class="form-group">
+        <label>Notes générales</label>
+        <div class="rich-editor-wrap" data-rich-id="p-notes">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('p-notes','removeFormat')">Tx</button>
+  </div>
+  <div id="p-notes-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Observations générales…"></div>
+  <textarea id="p-notes" class="rich-editor-value" rows="3" aria-hidden="true" tabindex="-1"></textarea>
+</div>
+      </div>
+      <div class="info-box terra" style="font-size:11px;">⚑ Toutes les données sont stockées uniquement sur cet appareil.</div>
+    </div>
+
+    <div id="tab-historique" data-tab style="display:none;">
+      <div class="suivi-section-hint">Antécédents, contexte de vie, histoire personnelle du patient.</div>
+      <div class="form-group">
+        <label>Historique</label>
+        <div class="rich-editor-wrap" data-rich-id="p-historique">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('p-historique','removeFormat')">Tx</button>
+  </div>
+  <div id="p-historique-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Antécédents médicaux, familiaux, événements marquants, contexte socio-professionnel…"></div>
+  <textarea id="p-historique" class="rich-editor-value" rows="12" aria-hidden="true" tabindex="-1"></textarea>
+</div>
+      </div>
+    </div>
+
+    <div id="tab-diagat" data-tab style="display:none;">
+      <div class="suivi-section-hint">Analyse Transactionnelle : états du moi, jeux, scénarios, injonctions, permissions…</div>
+      <div class="form-group">
+        <label>Diagnostic Analyse Transactionnelle</label>
+        <div class="rich-editor-wrap" data-rich-id="p-diagnosticAT">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('p-diagnosticAT','removeFormat')">Tx</button>
+  </div>
+  <div id="p-diagnosticAT-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="États du moi, jeux psychologiques, scénario de vie, injonctions / permissions, drivers…"></div>
+  <textarea id="p-diagnosticAT" class="rich-editor-value" rows="12" aria-hidden="true" tabindex="-1"></textarea>
+</div>
+      </div>
+    </div>
+
+    <div id="tab-supervision" data-tab style="display:none;">
+      <div class="suivi-section-hint">Notes de supervision, points à travailler en inter-séances, observations du thérapeute.</div>
+      <div class="form-group">
+        <label>Supervision</label>
+        <div class="rich-editor-wrap" data-rich-id="p-supervision">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('p-supervision','removeFormat')">Tx</button>
+  </div>
+  <div id="p-supervision-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Points à apporter en supervision, contre-transfert, hypothèses thérapeutiques…"></div>
+  <textarea id="p-supervision" class="rich-editor-value" rows="12" aria-hidden="true" tabindex="-1"></textarea>
+</div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-patient')">Annuler</button>
+      <button class="btn btn-primary" onclick="savePatient()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Séance ── -->
+<div class="modal-overlay hidden" id="modal-seance">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-seance')">✕</button>
+    <h2 class="modal-title" id="ms-title">Nouvelle séance</h2>
+    <input type="hidden" id="s-edit-id">
+    <input type="hidden" id="s-return-patient">
+
+    <div class="form-group"><label>Patient <span class="req">*</span></label><select id="s-patient"></select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Date <span class="req">*</span></label><input type="date" id="s-date" onchange="updateRecurrencePreview()"></div>
+      <div class="form-group"><label>Heure <span class="req">*</span></label><input type="time" id="s-heure" value="10:00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Durée</label>
+        <select id="s-duree">
+          <option value="45">45 min</option>
+          <option value="50">50 min</option>
+          <option value="60" selected>60 min</option>
+          <option value="75">75 min</option>
+          <option value="90">90 min</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Tarif (€)</label><input type="number" id="s-tarif" value="60" step="5" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Statut</label>
+        <select id="s-statut">
+          <option value="planifié">Planifiée</option>
+          <option value="honoré">Honorée</option>
+          <option value="réglée">Réglée</option>
+          <option value="facturé">Facturée</option>
+          <option value="annulé">Annulée</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mode de paiement</label>
+        <select id="s-paiement">
+          <option value="">— non défini —</option>
+          <option value="Espèces">Espèces</option>
+          <option value="Chèque">Chèque</option>
+          <option value="Virement">Virement</option>
+          <option value="Carte bancaire">Carte bancaire</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Notes de séance</label><div class="rich-editor-wrap" data-rich-id="s-notes">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('s-notes','removeFormat')">Tx</button>
+  </div>
+  <div id="s-notes-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Observations…"></div>
+  <textarea id="s-notes" class="rich-editor-value" rows="2" aria-hidden="true" tabindex="-1"></textarea>
+</div></div>
+
+    <!-- Planification récurrente -->
+    <div style="margin-top:.25rem;">
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;color:var(--warm-mid);">
+        <input type="checkbox" id="s-recurrence" onchange="toggleRecurrence()" style="width:auto;accent-color:var(--sage);">
+        Planifier plusieurs séances à l'avance
+      </label>
+    </div>
+
+    <div id="recurrence-box" class="recurrence-box" style="display:none;">
+      <!-- Mode de récurrence -->
+      <div class="tab-group" style="margin-bottom:.75rem;">
+        <button class="tab-btn active" onclick="switchRecMode('intervalle',this)">Par intervalle</button>
+        <button class="tab-btn" onclick="switchRecMode('jourhebdo',this)">Par jour de semaine</button>
+      </div>
+
+      <!-- Mode intervalle (existant) -->
+      <div id="rec-tab-intervalle">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Répéter tous les (jours)</label>
+            <input type="number" id="s-rec-freq" value="7" min="1" max="365" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+            <div class="form-hint">7 = hebdo · 14 = bimensuel · 30 = mensuel</div>
+          </div>
+          <div class="form-group">
+            <label>Nombre de séances</label>
+            <input type="number" id="s-rec-count" value="4" min="1" max="52" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode jour de semaine -->
+      <div id="rec-tab-jourhebdo" style="display:none;">
+        <div class="form-group">
+          <label>Jour de la semaine <span class="req">*</span></label>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem;" id="rec-jours-semaine">
+            <label class="jour-pill"><input type="checkbox" value="1" onchange="updateRecurrencePreview()"> Lu</label>
+            <label class="jour-pill"><input type="checkbox" value="2" onchange="updateRecurrencePreview()"> Ma</label>
+            <label class="jour-pill"><input type="checkbox" value="3" onchange="updateRecurrencePreview()"> Me</label>
+            <label class="jour-pill"><input type="checkbox" value="4" onchange="updateRecurrencePreview()"> Je</label>
+            <label class="jour-pill"><input type="checkbox" value="5" onchange="updateRecurrencePreview()"> Ve</label>
+            <label class="jour-pill"><input type="checkbox" value="6" onchange="updateRecurrencePreview()"> Sa</label>
+            <label class="jour-pill"><input type="checkbox" value="0" onchange="updateRecurrencePreview()"> Di</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>1 semaine sur</label>
+            <select id="s-rec-semaine-freq" onchange="updateRecurrencePreview()">
+              <option value="1">1 (toutes les semaines)</option>
+              <option value="2">2 (une semaine sur deux)</option>
+              <option value="3">3</option>
+              <option value="4">4 (une fois par mois)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Nombre de séances</label>
+            <input type="number" id="s-rec-count-hebdo" value="4" min="1" max="52" onchange="updateRecurrencePreview()" oninput="updateRecurrencePreview()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>À partir du</label>
+          <input type="date" id="s-rec-debut-hebdo" onchange="updateRecurrencePreview()">
+          <div class="form-hint">Laissez vide pour partir de la date de la séance</div>
+        </div>
+      </div>
+
+      <div class="recurrence-preview" id="rec-preview"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-seance')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveSeance()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Vue Séance ── -->
+<div class="modal-overlay hidden" id="modal-seance-view">
+  <div class="modal" style="max-width:580px;">
+    <button class="modal-close" onclick="closeModal('modal-seance-view')">✕</button>
+    <div id="seance-view-content"></div>
+  </div>
+</div>
+
+<!-- ── Modal Suivi Séance ── -->
+<div class="modal-overlay hidden" id="modal-suivi-seance">
+  <div class="modal" style="max-width:580px;">
+    <button class="modal-close" onclick="closeModal('modal-suivi-seance')">✕</button>
+    <h2 class="modal-title" id="suivi-seance-title">Suivi thérapeutique</h2>
+    <input type="hidden" id="suivi-seance-id">
+    <input type="hidden" id="suivi-patient-id">
+
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="showTab('sv-tab-historique', this)">Historique</button>
+      <button class="tab-btn" onclick="showTab('sv-tab-diagat', this)">Diagnostic AT</button>
+      <button class="tab-btn" onclick="showTab('sv-tab-supervision', this)">Supervision</button>
+    </div>
+
+    <!-- Historique -->
+    <div id="sv-tab-historique" data-tab>
+      <div class="suivi-section-hint">Antécédents, contexte de vie, histoire personnelle.</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <div class="rich-editor-wrap" data-rich-id="sv-historique-new">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-historique-new','removeFormat')">Tx</button>
+  </div>
+  <div id="sv-historique-new-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Nouvelle observation…"></div>
+  <textarea id="sv-historique-new" class="rich-editor-value" rows="3" aria-hidden="true" tabindex="-1"></textarea>
+</div>
+      </div>
+      <div id="sv-historique-existing" class="suivi-existing"></div>
+    </div>
+
+    <!-- Diagnostic AT -->
+    <div id="sv-tab-diagat" data-tab style="display:none;">
+      <div class="suivi-section-hint">Analyse Transactionnelle : états du moi, jeux, scénarios…</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <div class="rich-editor-wrap" data-rich-id="sv-diagat-new">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-diagat-new','removeFormat')">Tx</button>
+  </div>
+  <div id="sv-diagat-new-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Nouvelle observation AT…"></div>
+  <textarea id="sv-diagat-new" class="rich-editor-value" rows="3" aria-hidden="true" tabindex="-1"></textarea>
+</div>
+      </div>
+      <div id="sv-diagat-existing" class="suivi-existing"></div>
+    </div>
+
+    <!-- Supervision -->
+    <div id="sv-tab-supervision" data-tab style="display:none;">
+      <div class="suivi-section-hint">Points à travailler, hypothèses thérapeutiques, contre-transfert.</div>
+      <div class="form-group">
+        <label>Ajouter une note (sera horodatée et ajoutée en haut)</label>
+        <div class="rich-editor-wrap" data-rich-id="sv-supervision-new">
+  <div class="rich-toolbar" role="toolbar" aria-label="Mise en forme">
+    <button type="button" title="Gras" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','bold')"><strong>B</strong></button>
+    <button type="button" title="Italique" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','italic')"><em>I</em></button>
+    <button type="button" title="Souligné" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','underline')"><u>U</u></button>
+    <button type="button" title="Barré" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','strikeThrough')"><s>S</s></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Liste à puces" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','insertUnorderedList')">•≡</button>
+    <button type="button" title="Liste numérotée" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','insertOrderedList')">1≡</button>
+    <span class="rich-toolbar-sep"></span>
+    <span class="rich-color-label">Couleur</span>
+    <button type="button" class="rich-color rich-color-dark" title="Noir" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','foreColor','#3f3933')"></button>
+    <button type="button" class="rich-color rich-color-red" title="Rouge" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','foreColor','#b44b45')"></button>
+    <button type="button" class="rich-color rich-color-blue" title="Bleu" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','foreColor','#4169a1')"></button>
+    <button type="button" class="rich-color rich-color-green" title="Vert" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','foreColor','#477b55')"></button>
+    <span class="rich-toolbar-sep"></span>
+    <button type="button" title="Effacer le formatage" onmousedown="event.preventDefault()" onclick="richTextCommand('sv-supervision-new','removeFormat')">Tx</button>
+  </div>
+  <div id="sv-supervision-new-editor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Nouvelle note de supervision…"></div>
+  <textarea id="sv-supervision-new" class="rich-editor-value" rows="3" aria-hidden="true" tabindex="-1"></textarea>
+</div>
+      </div>
+      <div id="sv-supervision-existing" class="suivi-existing"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-suivi-seance')">Fermer</button>
+      <button class="btn btn-primary" onclick="saveSuiviSeance()">💾 Enregistrer les notes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Génération Facture ── -->
+<div class="modal-overlay hidden" id="modal-facture">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-facture')">✕</button>
+    <h2 class="modal-title">Nouvelle facture</h2>
+
+    <div id="cfg-warn" class="info-box terra" style="display:none;">
+      <strong>⚠</strong> SIRET ou adresse manquant.
+      <a href="#" onclick="closeModal('modal-facture');showPage('parametres',document.querySelectorAll('.nav-btn')[4])" style="color:var(--sage-dark);">Compléter les paramètres →</a>
+    </div>
+
+    <div class="form-group"><label>Patient <span class="req">*</span></label><select id="f-patient" onchange="populateFactureSeances()"></select></div>
+
+    <div class="form-group">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;flex-wrap:wrap;gap:.4rem;">
+        <label style="margin:0;">Séances à inclure <span class="req">*</span></label>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <label style="font-size:12px;color:var(--warm-mid);cursor:pointer;display:flex;align-items:center;gap:.3rem;">
+            <input type="checkbox" id="f-filtre-toutes" onchange="populateFactureSeances()" style="width:auto;accent-color:var(--sage);">
+            Toutes les séances
+          </label>
+          <button type="button" class="btn btn-secondary btn-xs" onclick="document.querySelectorAll('.f-cb').forEach(cb=>cb.checked=true);updateFTotal();">Tout sélectionner</button>
+        </div>
+      </div>
+      <div id="f-seances-select" style="border:1.5px solid var(--beige-mid);border-radius:var(--radius-sm);padding:.5rem;max-height:240px;overflow-y:auto;background:var(--white);">
+        <div style="color:var(--warm-mid);font-size:13px;padding:.5rem;">Sélectionnez un patient d'abord</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group"><label>Date d'émission <span class="req">*</span></label><input type="date" id="f-date"></div>
+      <div class="form-group"><label>Date d'échéance <span class="req">*</span></label><input type="date" id="f-echeance"></div>
+    </div>
+    <div class="form-group"><label>Objet de la facture</label><input type="text" id="f-objet" value="Séances de psychothérapie"></div>
+    <div style="padding:.75rem 1rem;background:var(--sage-pale);border-radius:var(--radius-sm);font-size:13px;color:var(--sage-dark);margin-bottom:.5rem;">
+      Total : <strong id="f-total-preview">0,00 €</strong>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-facture')">Annuler</button>
+      <button class="btn btn-primary" onclick="genererFacture()">Générer la facture</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal confirmation paiement avant facturation ── -->
+<div class="modal-overlay hidden" id="modal-facture-paiement">
+  <div class="modal" style="max-width:420px;">
+    <h2 class="modal-title">Mode de règlement requis</h2>
+    <p style="font-size:13px;color:var(--warm-mid);margin-bottom:1rem;line-height:1.5;">
+      <strong id="fp-nb-seances"></strong> séance(s) sélectionnée(s) n'ont pas de mode de règlement défini.<br>
+      Ce champ est obligatoire pour apparaître correctement sur la facture.
+    </p>
+    <div class="form-group">
+      <label>Mode de règlement <span class="req">*</span></label>
+      <select id="fp-paiement">
+        <option value="">— Sélectionner —</option>
+        <option value="Espèces">Espèces</option>
+        <option value="Chèque">Chèque</option>
+        <option value="Virement">Virement</option>
+        <option value="Carte bancaire">Carte bancaire</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-facture-paiement')">Annuler</button>
+      <button class="btn btn-primary" onclick="confirmerPaiementEtFacturer()">Confirmer et générer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Aperçu Facture ── -->
+<div class="modal-overlay hidden" id="modal-facture-view">
+  <div class="modal" style="max-width:700px;">
+    <button class="modal-close" onclick="closeModal('modal-facture-view')">✕</button>
+    <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;" id="no-print">
+      <button class="btn btn-primary" onclick="printFacture()">🖨 Imprimer / PDF</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-facture-view')">Fermer</button>
+    </div>
+    <div id="facture-view-content"></div>
+  </div>
+</div>
+
+<!-- ── Modal CA Détaillé ── -->
+<div class="modal-overlay hidden" id="modal-ca">
+  <div class="modal" style="max-width:600px;">
+    <button class="modal-close" onclick="closeModal('modal-ca')">✕</button>
+    <h2 class="modal-title" id="modal-ca-title">CA — Détail</h2>
+    <div id="modal-ca-content" style="max-height:70vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-ca')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Indisponibilité ── -->
+<div class="modal-overlay hidden" id="modal-indispo">
+  <div class="modal" style="max-width:460px;">
+    <button class="modal-close" onclick="closeModal('modal-indispo')">✕</button>
+    <h2 class="modal-title">Ajouter une indisponibilité</h2>
+
+    <!-- Type : ponctuelle ou récurrente -->
+    <div class="tab-group" style="margin-bottom:1rem;">
+      <button class="tab-btn active" onclick="switchIndispoType('ponctuelle',this)">Date précise</button>
+      <button class="tab-btn" onclick="switchIndispoType('recurrente',this)">Récurrente</button>
+    </div>
+
+    <!-- Ponctuelle -->
+    <div id="indispo-tab-ponctuelle">
+      <div class="form-group">
+        <label>Date <span class="req">*</span></label>
+        <input type="date" id="indispo-date">
+      </div>
+    </div>
+
+    <!-- Récurrente -->
+    <div id="indispo-tab-recurrente" style="display:none;">
+      <div class="form-group">
+        <label>Jour(s) de la semaine <span class="req">*</span></label>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem;" id="indispo-jours-semaine">
+          <label class="jour-pill"><input type="checkbox" value="1"> Lu</label>
+          <label class="jour-pill"><input type="checkbox" value="2"> Ma</label>
+          <label class="jour-pill"><input type="checkbox" value="3"> Me</label>
+          <label class="jour-pill"><input type="checkbox" value="4"> Je</label>
+          <label class="jour-pill"><input type="checkbox" value="5"> Ve</label>
+          <label class="jour-pill"><input type="checkbox" value="6"> Sa</label>
+          <label class="jour-pill"><input type="checkbox" value="0"> Di</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>1 semaine sur</label>
+          <select id="indispo-rec-freq">
+            <option value="1">1 (toutes les semaines)</option>
+            <option value="2">2 (une semaine sur deux)</option>
+            <option value="3">3</option>
+            <option value="4">4 (une fois par mois)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>À partir du <span class="req">*</span></label>
+          <input type="date" id="indispo-rec-debut">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Jusqu'au (optionnel)</label>
+        <input type="date" id="indispo-rec-fin">
+        <div class="form-hint">Laisser vide = indéfiniment</div>
+      </div>
+    </div>
+
+    <!-- Commun -->
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <input type="checkbox" id="indispo-journee" onchange="toggleIndispoJournee()" style="width:auto;accent-color:var(--sage);" checked>
+        Journée entière indisponible
+      </label>
+    </div>
+    <div id="indispo-créneau-group" style="display:none;gap:.75rem;">
+      <div class="form-group" style="flex:1;">
+        <label>Heure début</label>
+        <input type="time" id="indispo-heure-debut" value="09:00">
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>Heure fin</label>
+        <input type="time" id="indispo-heure-fin" value="10:00">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Motif (optionnel)</label>
+      <input type="text" id="indispo-motif" placeholder="Congé, formation, repos…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-indispo')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveIndispo()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal À facturer ── -->
+<div class="modal-overlay hidden" id="modal-a-facturer">
+  <div class="modal" style="max-width:560px;">
+    <button class="modal-close" onclick="closeModal('modal-a-facturer')">✕</button>
+    <h2 class="modal-title">Séances à facturer</h2>
+    <div id="a-facturer-content" style="max-height:60vh;overflow-y:auto;margin-top:1rem;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-a-facturer')">Fermer</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-a-facturer');openModal('modal-facture')">+ Nouvelle facture</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Règlement ── -->
+<div class="modal-overlay hidden" id="modal-reglement">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" onclick="document.getElementById('modal-reglement').classList.add('hidden')">✕</button>
+    <h2 class="modal-title">Marquer comme réglée</h2>
+    <input type="hidden" id="reg-seance-id">
+    <div class="form-group">
+      <label>Date de règlement <span class="req">*</span></label>
+      <input type="date" id="reg-date">
+    </div>
+    <div class="form-group">
+      <label>Mode de paiement</label>
+      <select id="reg-paiement">
+        <option value="">— non défini —</option>
+        <option value="Espèces">Espèces</option>
+        <option value="Chèque">Chèque</option>
+        <option value="Virement">Virement</option>
+        <option value="Carte bancaire">Carte bancaire</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-reglement').classList.add('hidden')">Annuler</button>
+      <button class="btn btn-success" onclick="confirmerReglement()">💶 Confirmer le règlement</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Import Google Agenda ── -->
+<div class="modal-overlay hidden" id="modal-gcal-import">
+  <div class="modal" style="max-width:680px;">
+    <button class="modal-close" onclick="closeModal('modal-gcal-import')">✕</button>
+    <h2 class="modal-title">📅 Importer depuis Google Agenda</h2>
+
+    <!-- Étape 1 : choix du calendrier + plage -->
+    <div id="gcal-step-calendars">
+      <p style="font-size:13px;color:var(--warm-mid);margin-bottom:1rem;line-height:1.5;">
+        Choisissez le calendrier à importer, puis la période souhaitée.
+      </p>
+
+      <div class="form-group">
+        <label style="font-weight:500;">Calendrier <span class="req">*</span></label>
+        <div id="gcal-cal-cards" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.4rem;max-height:240px;overflow-y:auto;"></div>
+        <input type="hidden" id="gcal-cal-select">
+      </div>
+
+      <div class="form-row" style="margin-top:.75rem;">
+        <div class="form-group">
+          <label>Du <span class="req">*</span></label>
+          <input type="date" id="gcal-date-from">
+        </div>
+        <div class="form-group">
+          <label>Au <span class="req">*</span></label>
+          <input type="date" id="gcal-date-to">
+        </div>
+      </div>
+
+      <div class="modal-actions" style="padding-top:0;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-gcal-import')">Annuler</button>
+        <button class="btn btn-primary" onclick="gcalLoadEvents()">Charger les événements →</button>
+      </div>
+    </div>
+
+    <!-- Étape 2 : tableau de rapprochement -->
+    <div id="gcal-step-events" style="display:none;">
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;">
+        <span style="font-size:13px;color:var(--warm-mid);">Associez chaque événement à un patient :</span>
+        <button class="btn btn-secondary btn-xs" onclick="gcalSelectAll(true)">Tout sélectionner</button>
+        <button class="btn btn-secondary btn-xs" onclick="gcalSelectAll(false)">Tout désélectionner</button>
+        <button class="btn btn-secondary btn-xs" onclick="document.getElementById('gcal-step-events').style.display='none';document.getElementById('gcal-step-calendars').style.display='';">← Retour</button>
+      </div>
+
+      <div style="overflow-x:auto;max-height:52vh;overflow-y:auto;border:1px solid var(--beige-mid);border-radius:var(--radius-sm);">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:var(--beige);position:sticky;top:0;">
+              <th style="padding:.5rem;width:36px;"></th>
+              <th style="padding:.5rem;text-align:left;">Date</th>
+              <th style="padding:.5rem;text-align:left;">Horaire</th>
+              <th style="padding:.5rem;text-align:left;">Titre Google</th>
+              <th style="padding:.5rem;text-align:left;min-width:160px;">Patient</th>
+            </tr>
+          </thead>
+          <tbody id="gcal-events-tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:.5rem;font-size:12px;color:var(--warm-mid);">
+        Les événements "Nouveau patient" créeront automatiquement une fiche patient à partir du titre de l'événement.
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-gcal-import')">Annuler</button>
+        <button class="btn btn-primary" onclick="gcalConfirmImport()">✓ Importer la sélection</button>
+      </div>
+    </div>
+
+    <div id="gcal-import-log" style="margin-top:.5rem;font-size:12px;color:var(--warm-mid);min-height:1.2em;"></div>
+  </div>
+</div>
+
+<!-- ── Modal mot de passe sauvegarde chiffrée ── -->
+<div class="modal-overlay hidden" id="modal-backup-password">
+  <div class="modal" style="max-width:440px;">
+    <h2 class="modal-title" id="backup-password-title">🔐 Sauvegarde chiffrée</h2>
+    <p id="backup-password-text" style="font-size:13px;color:var(--warm-mid);line-height:1.6;margin-bottom:1rem;"></p>
+    <form id="backup-password-form">
+      <div class="form-group">
+        <label for="backup-password">Mot de passe <span class="req">*</span></label>
+        <input type="password" id="backup-password" autocomplete="new-password" required>
+        <div class="form-hint">12 caractères minimum à la création. Utilisez un mot de passe unique et conservez-le précieusement : il ne peut pas être récupéré.</div>
+      </div>
+      <div class="form-group" id="backup-password-confirm-group">
+        <label for="backup-password-confirm">Confirmer le mot de passe <span class="req">*</span></label>
+        <input type="password" id="backup-password-confirm" autocomplete="new-password">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" type="button" id="backup-password-cancel">Annuler</button>
+        <button class="btn btn-primary" type="submit" id="backup-password-submit">Chiffrer et exporter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast hidden" id="toast"></div>
+
+<!-- Ordre important : scripts classiques partageant la portée globale
+     (les onclick="…" inline et les variables DB/CFG en dépendent). -->
+<script src="js/data.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/security.js"></script>
+<script src="js/google.js"></script>
+<script src="js/invoices.js"></script>
+<script src="js/ui/navigation.js"></script>
+<script src="js/ui/settings.js"></script>
+<script src="js/ui/patients.js"></script>
+<script src="js/ui/sessions.js"></script>
+<script src="js/ui/dashboard.js"></script>
+<script src="js/backup.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
