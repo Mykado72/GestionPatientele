@@ -62,6 +62,5 @@ function showTab(tabId, btn) {
   btn.classList.add('active');
 }
 
-document.querySelectorAll('.modal-overlay').forEach(o => {
-  o.addEventListener('click', e => { if (e.target === o) o.classList.add('hidden'); });
-});
+// Les fenêtres modales ne se ferment volontairement PAS au clic en dehors (évite de perdre une saisie) :
+// elles se ferment uniquement via leurs boutons (Fermer / Annuler / Enregistrer…).

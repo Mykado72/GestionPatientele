@@ -419,7 +419,6 @@ function askBackupPassword({ title, text, confirm = false, confirmLabel = 'Valid
       overlay.classList.add('hidden');
       formEl.onsubmit = null;
       cancelEl.onclick = null;
-      overlay.onclick = null;
       resolve(value);
     };
     cancelEl.onclick = () => finish(null);
@@ -431,7 +430,6 @@ function askBackupPassword({ title, text, confirm = false, confirmLabel = 'Valid
       if (confirm && password !== confirmEl.value) { alert('Les deux mots de passe ne correspondent pas.'); confirmEl.focus(); return; }
       finish(password);
     };
-    overlay.onclick = event => { if (event.target === overlay) finish(null); };
     setTimeout(() => pwdEl.focus(), 0);
   });
 }

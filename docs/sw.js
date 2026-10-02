@@ -11,7 +11,7 @@
 
 'use strict';
 
-const CACHE_VERSION = '2026.10.01-3';
+const CACHE_VERSION = '2026.10.02-1';
 const CACHE_NAME    = 'cabinet-psy-' + CACHE_VERSION;
 const CACHE_PREFIX  = 'cabinet-psy-';
 
